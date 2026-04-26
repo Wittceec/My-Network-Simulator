@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
-import { useUIStore } from '../../store/useUIStore'; // This was missing!
+import { useCallback, useRef, useEffect } from 'react';
+import { useUIStore } from '../../store/useUIStore';
 import {
   ReactFlow,
   Background,
@@ -21,7 +21,6 @@ const nodeTypes = {
   networkDevice: DeviceNode,
 };
 
-// We start with an empty canvas now!
 const initialNodes: Node[] = [];
 
 export default function NetworkCanvas() {
@@ -29,13 +28,11 @@ export default function NetworkCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { screenToFlowPosition } = useReactFlow();
-  
-  // Bring in our central brain
+
   const addDeviceToStore = useNetworkStore((state) => state.addDevice);
-  const addLinkToStore = useNetworkStore((state) => state.addLink); 
-  const openTerminal = useUIStore((state) => state.openTerminal); 
-  
-  // Allow the canvas to be a drop zone
+  const addLinkToStore = useNetworkStore((state) => state.addLink);
+  const openTerminal = useUIStore((state) => state.openTerminal);
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -44,7 +41,6 @@ export default function NetworkCanvas() {
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-
       const type = event.dataTransfer.getData('application/reactflow') as DeviceType;
       if (!type) return;
 
@@ -81,7 +77,6 @@ export default function NetworkCanvas() {
     [screenToFlowPosition, nodes, setNodes, addDeviceToStore]
   );
 
-  // Fires when you connect two devices with a cable
   const onConnect = useCallback(
     (params: Connection) => {
       setEdges((eds) => addEdge({ ...params, animated: true }, eds));
@@ -90,15 +85,14 @@ export default function NetworkCanvas() {
       addLinkToStore({
         id: linkId,
         sourceDeviceId: params.source || '',
-        sourceInterfaceId: 'fastethernet0/0', 
+        sourceInterfaceId: 'fastethernet0/0',
         targetDeviceId: params.target || '',
-        targetInterfaceId: 'fastethernet0/0', 
+        targetInterfaceId: 'fastethernet0/0',
       });
     },
     [setEdges, addLinkToStore]
   );
 
-    // NEW: Grab activeLink from the store
   const storeDevices = useNetworkStore((state) => state.devices);
   const storeLinks = useNetworkStore((state) => state.links);
   const activeLink = useNetworkStore((state) => state.activeLink);
@@ -107,7 +101,7 @@ export default function NetworkCanvas() {
     const newNodes: Node[] = Object.values(storeDevices).map((dev, index) => ({
       id: dev.id,
       type: 'networkDevice',
-      position: { x: 100 + (index * 150), y: 200 }, 
+      position: { x: 100 + index * 150, y: 200 },
       data: { label: dev.hostname, type: dev.type },
     }));
 
@@ -115,13 +109,12 @@ export default function NetworkCanvas() {
       id: link.id,
       source: link.sourceDeviceId,
       target: link.targetDeviceId,
-      animated: true,
-      // NEW: Dynamic Styling!
+      animated: activeLink === link.id,
       style: {
-        stroke: activeLink === link.id ? '#4ade80' : '#64748b', // Bright green if active, gray if not
-        strokeWidth: activeLink === link.id ? 5 : 2,            // Thicker if active
-        transition: 'all 0.2s ease',                            // Smooth fade
-      }
+        stroke: activeLink === link.id ? '#7dd44a' : '#3a3a45',
+        strokeWidth: activeLink === link.id ? 3.5 : 1.75,
+        transition: 'all 0.2s ease',
+      },
     }));
 
     setNodes(newNodes);
@@ -129,7 +122,15 @@ export default function NetworkCanvas() {
   }, [storeDevices, storeLinks, activeLink, setNodes, setEdges]);
 
   return (
-    <div style={{ flexGrow: 1, height: '100%', backgroundColor: '#020617' }} ref={reactFlowWrapper}>
+    <div
+      style={{
+        flexGrow: 1,
+        height: '100%',
+        background: '#08080b',
+        position: 'relative',
+      }}
+      ref={reactFlowWrapper}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -139,11 +140,12 @@ export default function NetworkCanvas() {
         onDragOver={onDragOver}
         onDrop={onDrop}
         onConnect={onConnect}
-        onNodeClick={(_, node) => openTerminal(node.id)} 
+        onNodeClick={(_, node) => openTerminal(node.id)}
         fitView
+        proOptions={{ hideAttribution: true }}
       >
-        <Background color="#334155" gap={20} size={2} />
-        <Controls style={{ backgroundColor: 'white', color: 'black' }} />
+        <Background variant={'dots' as any} color="#1c1c24" gap={24} size={1.5} />
+        <Controls position="bottom-left" showInteractive={false} />
       </ReactFlow>
     </div>
   );

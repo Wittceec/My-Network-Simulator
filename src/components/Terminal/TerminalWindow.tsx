@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useRef, useEffect } from 'react';
+import { useState, type KeyboardEvent, useRef, useEffect } from 'react';
 import { useUIStore } from '../../store/useUIStore';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import { executeCommand, type CliMode } from '../../core/parser/cliParser';
@@ -9,22 +9,29 @@ interface Props {
   index: number;
 }
 
+const QUICK_KEYS_ROUTER = ['enable', 'config t', 'show ip int br', 'show ip route', 'ping ', 'exit'];
+const QUICK_KEYS_PC = ['ipconfig', 'ping ', 'arp -a', 'tracert ', 'cls'];
+
 export default function TerminalWindow({ deviceId, index }: Props) {
   const closeTerminal = useUIStore((state) => state.closeTerminal);
   const device = useNetworkStore((state) => state.devices[deviceId]);
 
-  // --- DRAGGABLE WINDOW LOGIC ---
-  // Cascade the windows slightly based on their index so they don't spawn directly on top of each other
-  const [position, setPosition] = useState({ x: 50 + (index * 40), y: 50 + (index * 40) });
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches;
+
+  // Drag (desktop only)
+  const [position, setPosition] = useState({ x: 60 + index * 36, y: 80 + index * 36 });
+  const [size] = useState({ w: 520, h: 360 });
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (isMobile) return;
     setIsDragging(true);
     dragOffset.current = { x: e.clientX - position.x, y: e.clientY - position.y };
   };
 
   useEffect(() => {
+    if (isMobile) return;
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
         setPosition({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
@@ -39,9 +46,8 @@ export default function TerminalWindow({ deviceId, index }: Props) {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-    }
-  }, [isDragging]);
-  // ------------------------------
+    };
+  }, [isDragging, isMobile]);
 
   const [history, setHistory] = useState<string[]>([]);
   const [input, setInput] = useState('');
@@ -50,94 +56,201 @@ export default function TerminalWindow({ deviceId, index }: Props) {
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const endOfHistoryRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => endOfHistoryRef.current?.scrollIntoView({ behavior: 'smooth' }), [history]);
+  useEffect(
+    () => endOfHistoryRef.current?.scrollIntoView({ behavior: 'smooth' }),
+    [history]
+  );
 
   if (!device) return null;
 
   const isPC = device.type === 'pc';
-  const textColor = isPC ? '#e2e8f0' : '#16a34a'; 
-  
-  let prompt = '';
-  if (isPC) {
-    prompt = `C:\\Users\\${device.hostname}>`;
-  } else {
-    let promptSuffix = '>';
-    if (mode === 'privilege') promptSuffix = '#';
-    if (mode === 'global') promptSuffix = '(config)#';
-    if (mode === 'interface') promptSuffix = `(config-if)#`;
-    if (mode === 'dhcp') promptSuffix = `(dhcp-config)#`;
-    prompt = `${device.hostname}${promptSuffix}`;
-  }
+
+  const promptStr = (() => {
+    if (isPC) return `C:\\Users\\${device.hostname}>`;
+    let suffix = '>';
+    if (mode === 'privilege') suffix = '#';
+    if (mode === 'global') suffix = '(config)#';
+    if (mode === 'interface') suffix = '(config-if)#';
+    if (mode === 'dhcp') suffix = '(dhcp-config)#';
+    return `${device.hostname}${suffix}`;
+  })();
+
+  const submit = (raw: string) => {
+    const text = raw;
+    if (text.trim() === '') {
+      setHistory((prev) => [...prev, promptStr]);
+    } else {
+      setCommandHistory((prev) => [...prev, text]);
+      setHistoryIndex(-1);
+      const newHistory = [...history, `${promptStr} ${text}`];
+      if (isPC) {
+        const pcOutput = executePcCommand(text, device);
+        newHistory.push(...pcOutput);
+      } else {
+        const result = executeCommand(text, mode, context, device);
+        if (result.output.length > 0) newHistory.push(...result.output);
+        setMode(result.newMode);
+        setContext(result.newContext);
+      }
+      setHistory(newHistory);
+    }
+    setInput('');
+  };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      if (input.trim() === '') {
-        setHistory((prev) => [...prev, prompt]);
-      } else {
-        setCommandHistory((prev) => [...prev, input]);
-        setHistoryIndex(-1);
-        const newHistory = [...history, `${prompt} ${input}`];
-
-        if (isPC) {
-          const pcOutput = executePcCommand(input, device);
-          newHistory.push(...pcOutput);
-        } else {
-          const result = executeCommand(input, mode, context, device);
-          if (result.output.length > 0) newHistory.push(...result.output);
-          setMode(result.newMode);
-          setContext(result.newContext);
-        }
-        setHistory(newHistory);
-      }
-      setInput(''); 
+      submit(input);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (commandHistory.length > 0) {
-        const newIndex = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
-        setHistoryIndex(newIndex); setInput(commandHistory[newIndex]);
+        const newIndex =
+          historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+        setHistoryIndex(newIndex);
+        setInput(commandHistory[newIndex]);
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (historyIndex !== -1) {
         const newIndex = historyIndex + 1;
         if (newIndex >= commandHistory.length) {
-          setHistoryIndex(-1); setInput('');
+          setHistoryIndex(-1);
+          setInput('');
         } else {
-          setHistoryIndex(newIndex); setInput(commandHistory[newIndex]);
+          setHistoryIndex(newIndex);
+          setInput(commandHistory[newIndex]);
         }
       }
     }
   };
 
+  const insertQuick = (k: string) => {
+    setInput((prev) => prev + k);
+    inputRef.current?.focus();
+  };
+
+  const promptCls = isPC ? 'term-prompt-pc' : 'term-prompt-r';
+  const subtitle = isPC ? 'Command Prompt' : 'Console';
+  const modeLabel = isPC ? 'PC' : mode.toUpperCase();
+  const quickKeys = isPC ? QUICK_KEYS_PC : QUICK_KEYS_ROUTER;
+
+  // Mobile: full-screen layout
+  const positionStyle: React.CSSProperties = isMobile
+    ? { left: 0, top: 0, right: 0, bottom: 0, width: '100%', height: '100%' }
+    : {
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        width: `${size.w}px`,
+        height: `${size.h}px`,
+      };
+
   return (
-    <div style={{
-      position: 'absolute', left: `${position.x}px`, top: `${position.y}px`, 
-      width: '500px', height: '350px', backgroundColor: '#000000', color: textColor, 
-      fontFamily: 'monospace', fontSize: '14px', borderRadius: '8px', border: '1px solid #334155', 
-      display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', zIndex: 100
-    }}>
-      {/* DRAGGABLE HEADER */}
-      <div 
+    <div className="term" style={positionStyle}>
+      <div
+        className="term-head"
         onMouseDown={handleMouseDown}
-        style={{ 
-          backgroundColor: '#1e293b', padding: '8px 12px', display: 'flex', 
-          justifyContent: 'space-between', alignItems: 'center', cursor: isDragging ? 'grabbing' : 'grab',
-          borderTopLeftRadius: '7px', borderTopRightRadius: '7px', userSelect: 'none'
-      }}>
-        <span style={{ color: 'white', fontWeight: 'bold' }}>{device.hostname} - {isPC ? 'Command Prompt' : 'Console'}</span>
-        <button onMouseDown={(e) => e.stopPropagation()} onClick={() => closeTerminal(deviceId)} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '2px 8px', fontWeight: 'bold' }}>X</button>
+        style={{ cursor: isMobile ? 'default' : isDragging ? 'grabbing' : 'grab' }}
+      >
+        <div className="term-dots">
+          <span
+            className="dot close"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={() => closeTerminal(deviceId)}
+            title="Close"
+          ></span>
+          <span className="dot min"></span>
+          <span className="dot max"></span>
+        </div>
+        <div className="term-title">
+          <span className="host">{device.hostname}</span>
+          <span className="sep">·</span>
+          <span>{subtitle}</span>
+        </div>
+        <div className="term-mode">{modeLabel}</div>
       </div>
 
-      <div style={{ flexGrow: 1, padding: '12px', overflowY: 'auto' }}>
-        {history.map((line, i) => <div key={i} style={{ marginBottom: '2px', whiteSpace: 'pre-wrap' }}>{line}</div>)}
-        <div style={{ display: 'flex' }} ref={endOfHistoryRef}>
-          <span style={{ marginRight: '8px' }}>{prompt}</span>
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} autoCapitalize="none" autoComplete="off" autoCorrect="off" spellCheck={false} autoFocus
-            style={{ background: 'transparent', color: textColor, border: 'none', outline: 'none', flexGrow: 1, fontFamily: 'monospace', fontSize: '14px' }}
+      <div className={`term-body ${isPC ? 'pc' : ''}`} onClick={() => inputRef.current?.focus()}>
+        {history.map((line, i) => (
+          <div key={i} className="term-line">
+            {line}
+          </div>
+        ))}
+        <div className="term-prompt-row" ref={endOfHistoryRef}>
+          <span className={promptCls}>{promptStr}</span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            autoCapitalize="none"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            autoFocus
+            className="term-input"
           />
         </div>
       </div>
+
+      {isMobile && (
+        <>
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderTop: '1px solid var(--border)',
+              padding: '8px 10px',
+              display: 'flex',
+              gap: 6,
+              overflowX: 'auto',
+            }}
+          >
+            {quickKeys.map((k) => (
+              <button
+                key={k}
+                className="btn"
+                style={{
+                  padding: '6px 10px',
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => insertQuick(k)}
+              >
+                {k}
+              </button>
+            ))}
+            <button
+              className="btn"
+              style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                if (commandHistory.length > 0) {
+                  const newIndex =
+                    historyIndex === -1
+                      ? commandHistory.length - 1
+                      : Math.max(0, historyIndex - 1);
+                  setHistoryIndex(newIndex);
+                  setInput(commandHistory[newIndex]);
+                }
+              }}
+            >
+              ↑
+            </button>
+            <button
+              className="btn"
+              style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => submit(input)}
+            >
+              ↵
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

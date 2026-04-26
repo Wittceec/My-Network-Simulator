@@ -98,9 +98,10 @@ export default function NetworkCanvas() {
     [setEdges, addLinkToStore]
   );
 
-  // Sync visual nodes/edges when the store is updated (e.g. via Import)
+    // NEW: Grab activeLink from the store
   const storeDevices = useNetworkStore((state) => state.devices);
   const storeLinks = useNetworkStore((state) => state.links);
+  const activeLink = useNetworkStore((state) => state.activeLink);
 
   useEffect(() => {
     const newNodes: Node[] = Object.values(storeDevices).map((dev, index) => ({
@@ -115,11 +116,17 @@ export default function NetworkCanvas() {
       source: link.sourceDeviceId,
       target: link.targetDeviceId,
       animated: true,
+      // NEW: Dynamic Styling!
+      style: {
+        stroke: activeLink === link.id ? '#4ade80' : '#64748b', // Bright green if active, gray if not
+        strokeWidth: activeLink === link.id ? 5 : 2,            // Thicker if active
+        transition: 'all 0.2s ease',                            // Smooth fade
+      }
     }));
 
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [storeDevices, storeLinks, setNodes, setEdges]);
+  }, [storeDevices, storeLinks, activeLink, setNodes, setEdges]);
 
   return (
     <div style={{ flexGrow: 1, height: '100%', backgroundColor: '#020617' }} ref={reactFlowWrapper}>

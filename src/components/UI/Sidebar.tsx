@@ -17,6 +17,7 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
   const devices = useNetworkStore((s) => s.devices);
   const links = useNetworkStore((s) => s.links);
   const loadLab = useNetworkStore((s) => s.loadLab);
+  const addDevice = useNetworkStore((s) => s.addDevice); // NEW
 
   const deviceCount = Object.keys(devices).length;
   const linkCount = Object.keys(links).length;
@@ -28,6 +29,21 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
+  };
+
+  // NEW: Allows tapping on mobile to spawn a device without dragging
+  const handleDeviceTap = (type: DevKind) => {
+    const typeArray = Object.values(devices).filter(d => d.type === type);
+    const idNumber = typeArray.length + 1;
+    const prefix = type === 'router' ? 'R' : type === 'switch' ? 'SW' : 'PC';
+    const newId = `${prefix}${idNumber}`;
+
+    addDevice({
+      id: newId, hostname: newId, type: type, interfaces: {},
+      routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {},
+    });
+    
+    if (onAfterAction) onAfterAction(); // Closes the mobile sheet
   };
 
   const handleImport = () => {
@@ -46,9 +62,7 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
   const handleExport = () => {
     const state = useNetworkStore.getState();
     const labData = { devices: state.devices, links: state.links };
-    const dataStr =
-      'data:text/json;charset=utf-8,' +
-      encodeURIComponent(JSON.stringify(labData, null, 2));
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(labData, null, 2));
     const a = document.createElement('a');
     a.setAttribute('href', dataStr);
     a.setAttribute('download', 'my_network_lab.json');
@@ -64,7 +78,7 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
         <div className="group">
           <div className="group-head">
             <span className="section-label">Devices</span>
-            <span className="count">DRAG ONTO CANVAS</span>
+            <span className="count">DRAG OR TAP</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(Object.keys(DEVICE_META) as DevKind[]).map((kind) => {
@@ -74,6 +88,7 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
                   key={kind}
                   className={`dev-chip ${kind}`}
                   onDragStart={(e) => onDragStart(e, kind)}
+                  onClick={() => handleDeviceTap(kind)} // NEW
                   draggable
                 >
                   <span className="glyph">{meta.glyph}</span>
@@ -112,36 +127,16 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
           <div className="group-head">
             <span className="section-label">Legend</span>
           </div>
-          <div className="legend-row">
-            <span className="swatch" style={{ background: 'var(--router)' }}></span>Router · L3
-          </div>
-          <div className="legend-row">
-            <span className="swatch" style={{ background: 'var(--switch)' }}></span>Switch · L2
-          </div>
-          <div className="legend-row">
-            <span className="swatch" style={{ background: 'var(--pc)' }}></span>PC · Host
-          </div>
-          <div className="legend-row">
-            <span className="swatch" style={{ background: 'var(--link-active)' }}></span>Active link
-          </div>
+          <div className="legend-row"><span className="swatch" style={{ background: 'var(--router)' }}></span>Router · L3</div>
+          <div className="legend-row"><span className="swatch" style={{ background: 'var(--switch)' }}></span>Switch · L2</div>
+          <div className="legend-row"><span className="swatch" style={{ background: 'var(--pc)' }}></span>PC · Host</div>
+          <div className="legend-row"><span className="swatch" style={{ background: 'var(--link-active)' }}></span>Active link</div>
         </div>
       </div>
 
-      <div
-        style={{
-          borderTop: '1px solid var(--border)',
-          padding: 12,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
-      >
-        <button className="btn" onClick={handleExport}>
-          <span className="mono">↓</span>Export Lab
-        </button>
-        <button className="btn" onClick={handleImport}>
-          <span className="mono">↑</span>Import Lab
-        </button>
+      <div style={{ borderTop: '1px solid var(--border)', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <button className="btn" onClick={handleExport}><span className="mono">↓</span>Export Lab</button>
+        <button className="btn" onClick={handleImport}><span className="mono">↑</span>Import Lab</button>
       </div>
     </>
   );
@@ -161,21 +156,9 @@ export function SidebarSheet({ onClose }: { onClose: () => void }) {
       <div className="scrim" onClick={onClose} />
       <div className="sheet">
         <div className="sheet-handle" />
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 12,
-          }}
-        >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <span className="section-label">Devices · Lab</span>
-          <span
-            className="mono"
-            style={{ fontSize: 10, color: 'var(--text-dim)' }}
-          >
-            tap or drag onto canvas
-          </span>
+          <span className="mono" style={{ fontSize: 10, color: 'var(--text-dim)' }}>tap or drag onto canvas</span>
         </div>
         <SidebarBody onAfterAction={onClose} />
       </div>
@@ -185,7 +168,6 @@ export function SidebarSheet({ onClose }: { onClose: () => void }) {
 
 export { SidebarBody };
 
-// hook for the topbar to open the sheet on mobile
 export function useSheetState() {
   const [open, setOpen] = useState(false);
   return { open, openSheet: () => setOpen(true), closeSheet: () => setOpen(false) };

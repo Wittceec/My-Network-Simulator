@@ -18,7 +18,6 @@ export default function TerminalWindow({ deviceId, index }: Props) {
 
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches;
 
-  // Drag (desktop only)
   const [position, setPosition] = useState({ x: 60 + index * 36, y: 80 + index * 36 });
   const [size] = useState({ w: 520, h: 360 });
   const [isDragging, setIsDragging] = useState(false);
@@ -58,10 +57,7 @@ export default function TerminalWindow({ deviceId, index }: Props) {
   const endOfHistoryRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(
-    () => endOfHistoryRef.current?.scrollIntoView({ behavior: 'smooth' }),
-    [history]
-  );
+  useEffect(() => endOfHistoryRef.current?.scrollIntoView({ behavior: 'smooth' }), [history]);
 
   if (!device) return null;
 
@@ -105,21 +101,17 @@ export default function TerminalWindow({ deviceId, index }: Props) {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (commandHistory.length > 0) {
-        const newIndex =
-          historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
-        setHistoryIndex(newIndex);
-        setInput(commandHistory[newIndex]);
+        const newIndex = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+        setHistoryIndex(newIndex); setInput(commandHistory[newIndex]);
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (historyIndex !== -1) {
         const newIndex = historyIndex + 1;
         if (newIndex >= commandHistory.length) {
-          setHistoryIndex(-1);
-          setInput('');
+          setHistoryIndex(-1); setInput('');
         } else {
-          setHistoryIndex(newIndex);
-          setInput(commandHistory[newIndex]);
+          setHistoryIndex(newIndex); setInput(commandHistory[newIndex]);
         }
       }
     }
@@ -135,27 +127,18 @@ export default function TerminalWindow({ deviceId, index }: Props) {
   const modeLabel = isPC ? 'PC' : mode.toUpperCase();
   const quickKeys = isPC ? QUICK_KEYS_PC : QUICK_KEYS_ROUTER;
 
-  // Mobile: full-screen layout
   const positionStyle: React.CSSProperties = isMobile
     ? { left: 0, top: 0, right: 0, bottom: 0, width: '100%', height: '100%' }
-    : {
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        width: `${size.w}px`,
-        height: `${size.h}px`,
-      };
+    : { left: `${position.x}px`, top: `${position.y}px`, width: `${size.w}px`, height: `${size.h}px` };
 
   return (
     <div className="term" style={positionStyle}>
-      <div
-        className="term-head"
-        onMouseDown={handleMouseDown}
-        style={{ cursor: isMobile ? 'default' : isDragging ? 'grabbing' : 'grab' }}
-      >
+      <div className="term-head" onMouseDown={handleMouseDown} style={{ cursor: isMobile ? 'default' : isDragging ? 'grabbing' : 'grab' }}>
         <div className="term-dots">
           <span
             className="dot close"
             onMouseDown={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => { e.stopPropagation(); closeTerminal(deviceId); }} // Fixes touch screens
             onClick={() => closeTerminal(deviceId)}
             title="Close"
           ></span>
@@ -171,85 +154,37 @@ export default function TerminalWindow({ deviceId, index }: Props) {
       </div>
 
       <div className={`term-body ${isPC ? 'pc' : ''}`} onClick={() => inputRef.current?.focus()}>
-        {history.map((line, i) => (
-          <div key={i} className="term-line">
-            {line}
-          </div>
-        ))}
+        {history.map((line, i) => <div key={i} className="term-line">{line}</div>)}
         <div className="term-prompt-row" ref={endOfHistoryRef}>
           <span className={promptCls}>{promptStr}</span>
           <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoCapitalize="none"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            autoFocus
+            ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown} autoCapitalize="none" autoComplete="off" autoCorrect="off" spellCheck={false} autoFocus
             className="term-input"
           />
         </div>
       </div>
 
       {isMobile && (
-        <>
-          <div
-            style={{
-              background: 'var(--surface)',
-              borderTop: '1px solid var(--border)',
-              padding: '8px 10px',
-              display: 'flex',
-              gap: 6,
-              overflowX: 'auto',
-            }}
-          >
-            {quickKeys.map((k) => (
-              <button
-                key={k}
-                className="btn"
-                style={{
-                  padding: '6px 10px',
-                  fontSize: 11,
-                  fontFamily: 'var(--font-mono)',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => insertQuick(k)}
-              >
-                {k}
-              </button>
-            ))}
-            <button
-              className="btn"
-              style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                if (commandHistory.length > 0) {
-                  const newIndex =
-                    historyIndex === -1
-                      ? commandHistory.length - 1
-                      : Math.max(0, historyIndex - 1);
-                  setHistoryIndex(newIndex);
-                  setInput(commandHistory[newIndex]);
-                }
-              }}
-            >
-              ↑
+        <div style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '8px 10px', display: 'flex', gap: 6, overflowX: 'auto' }}>
+          {/* Explicit Mobile Close Button */}
+          <button className="btn" style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0, color: '#ef5350', borderColor: '#ef5350' }} onClick={() => closeTerminal(deviceId)}>
+            Close
+          </button>
+          
+          {quickKeys.map((k) => (
+            <button key={k} className="btn" style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', flexShrink: 0 }} onClick={() => insertQuick(k)}>
+              {k}
             </button>
-            <button
-              className="btn"
-              style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => submit(input)}
-            >
-              ↵
-            </button>
-          </div>
-        </>
+          ))}
+          <button className="btn" style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }} onClick={() => {
+            if (commandHistory.length > 0) {
+              const newIndex = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+              setHistoryIndex(newIndex); setInput(commandHistory[newIndex]);
+            }
+          }}>↑</button>
+          <button className="btn" style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }} onClick={() => submit(input)}>↵</button>
+        </div>
       )}
     </div>
   );

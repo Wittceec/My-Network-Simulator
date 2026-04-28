@@ -1,3 +1,4 @@
+import { runOSPF } from '../../core/logic/ospf';
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { useUIStore } from '../../store/useUIStore';
 import {
@@ -128,6 +129,7 @@ export default function NetworkCanvas() {
         targetDeviceId: params.target || '',
         targetInterfaceId: 'fastethernet0/0',
       });
+      setTimeout(() => runOSPF(), 50); // NEW
     },
     [addLinkToStore]
   );
@@ -138,6 +140,7 @@ export default function NetworkCanvas() {
 
   const onEdgesDelete = useCallback((deletedEdges: Edge[]) => {
     deletedEdges.forEach((edge) => removeLink(edge.id));
+    setTimeout(() => runOSPF(), 50); // NEW
   }, [removeLink]);
 
   const storeDevices = useNetworkStore((state) => state.devices);

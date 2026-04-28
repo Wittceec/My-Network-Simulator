@@ -71,6 +71,7 @@ export default function TerminalWindow({ deviceId, index }: Props) {
     if (mode === 'global') suffix = '(config)#';
     if (mode === 'interface') suffix = '(config-if)#';
     if (mode === 'dhcp') suffix = '(dhcp-config)#';
+    if (mode === 'router') suffix = '(config-router)#'; // NEW!
     return `${device.hostname}${suffix}`;
   })();
 

@@ -2,7 +2,8 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import type { Device } from '../../types/device';
 import { simulatePing, tracePath, animatePath } from '../logic/ping';
 
-export type CliMode = 'user' | 'privilege' | 'global' | 'interface' | 'dhcp';
+// NEW: Added 'router' mode
+export type CliMode = 'user' | 'privilege' | 'global' | 'interface' | 'dhcp' | 'router';
 
 interface ParserResult {
   output: string[];
@@ -30,9 +31,8 @@ export function executeCommand(
 
   const updateDevice = useNetworkStore.getState().updateDevice;
 
-  // --- GLOBAL COMMANDS ---
   if (cmd === 'exit') {
-    if (currentMode === 'interface' || currentMode === 'dhcp') {
+    if (currentMode === 'interface' || currentMode === 'dhcp' || currentMode === 'router') {
       result.newMode = 'global';
       result.newContext = '';
     } else if (currentMode === 'global') {
@@ -44,7 +44,7 @@ export function executeCommand(
   } 
   
   if (cmd === 'end') {
-    if (currentMode === 'global' || currentMode === 'interface' || currentMode === 'dhcp') {
+    if (currentMode === 'global' || currentMode === 'interface' || currentMode === 'dhcp' || currentMode === 'router') {
       result.newMode = 'privilege';
       result.newContext = '';
       return result;
@@ -69,11 +69,16 @@ export function executeCommand(
             result.output.push(`${intf.id.padEnd(22)} ${ip.padEnd(15)} YES manual ${status.padEnd(21)} ${status}`);
           });
         } else if (args[1] === 'ip' && args[2] === 'route') {
-          result.output.push('Codes: C - connected, S - static\n');
+          result.output.push('Codes: C - connected, S - static, O - OSPF\n');
           Object.values(device.interfaces).forEach(intf => {
             if (intf.isUp && intf.ipv4) result.output.push(`C     ${intf.ipv4.ip}/24 is directly connected, ${intf.id}`);
           });
-          device.routingTable.forEach(r => result.output.push(`S     ${r.network}/24 via ${r.nextHopIp}`));
+          device.routingTable.forEach(r => {
+            // UPDATED: Now identifies dynamic OSPF routes in the table
+            const code = r.protocol === 'ospf' ? 'O' : 'S';
+            const metric = r.protocol === 'ospf' ? '[110/2]' : '[1/0]';
+            result.output.push(`${code}     ${r.network}/24 ${metric} via ${r.nextHopIp}`);
+          });
         } else if (args[1] === 'mac' && (args[2] === 'address-table' || args[2] === 'address')) {
           result.output.push('          Mac Address Table');
           result.output.push('-------------------------------------------');
@@ -88,6 +93,9 @@ export function executeCommand(
           entries.forEach(([ip, mac]) => {
             result.output.push(`Internet  ${ip.padEnd(16)} -          ${mac}  ARPA   FastEthernet0/0`);
           });
+        } else if (args[1] === 'ip' && args[2] === 'ospf' && args[3] === 'neighbor') {
+          // Placeholder for the engine!
+          result.output.push('Neighbor ID     Pri   State           Dead Time   Address         Interface');
         } else {
           result.output.push('% Incomplete command.');
         }
@@ -147,6 +155,17 @@ export function executeCommand(
           updateDevice(device.id, (d) => ({
             ...d,
             dhcpPools: { ...(d.dhcpPools || {}), [poolName]: { name: poolName, nextIpSuffix: 10 } }
+          }));
+        }
+      } else if (cmd === 'router' && args[1] === 'ospf') {
+        // NEW: OSPF Router Mode Trigger
+        const processId = args[2];
+        if (processId) {
+          result.newMode = 'router';
+          result.newContext = `ospf ${processId}`;
+          updateDevice(device.id, (d) => ({
+            ...d,
+            ospf: (d as any).ospf || { processId, networks: [] }
           }));
         }
       } else if (cmd === 'interface' || cmd === 'int') {
@@ -223,6 +242,26 @@ export function executeCommand(
       }
       break;
 
+    // NEW: The OSPF Sub-menu!
+    case 'router':
+      if (cmd === 'network') {
+        const [network, wildcard, areaKeyword, area] = [args[1], args[2], args[3], args[4]];
+        if (network && wildcard && areaKeyword === 'area' && area) {
+          updateDevice(device.id, (d) => {
+            const currentOspf = (d as any).ospf || { processId: '1', networks: [] };
+            // Prevent duplicate network statements
+            if (currentOspf.networks.some((n: any) => n.network === network)) return d;
+            return {
+              ...d,
+              ospf: { ...currentOspf, networks: [...currentOspf.networks, { network, wildcard, area }] }
+            };
+          });
+        }
+      } else {
+        result.output.push("% Invalid input detected at '^' marker.");
+      }
+      break;
+
     default:
       result.output.push('% Unknown command');
   }
@@ -230,14 +269,15 @@ export function executeCommand(
   return result;
 }
 
-// --- NEW: CISCO IOS EMULATION HELPERS ---
+// --- CISCO IOS EMULATION HELPERS ---
 
 const IOS_WORDS: Record<CliMode, string[]> = {
   user: ['enable', 'ping', 'traceroute', 'exit'],
   privilege: ['configure', 'terminal', 'show', 'ip', 'interface', 'brief', 'route', 'mac', 'address-table', 'arp', 'ping', 'traceroute', 'exit', 'end'],
-  global: ['hostname', 'ip', 'route', 'dhcp', 'pool', 'interface', 'vlan', 'exit', 'end'],
+  global: ['hostname', 'ip', 'route', 'router', 'dhcp', 'pool', 'interface', 'vlan', 'exit', 'end'],
   interface: ['ip', 'address', 'shutdown', 'no', 'switchport', 'mode', 'access', 'trunk', 'vlan', 'exit', 'end'],
-  dhcp: ['network', 'default-router', 'exit', 'end']
+  dhcp: ['network', 'default-router', 'exit', 'end'],
+  router: ['network', 'exit', 'end']
 };
 
 const HELP_MENUS: Record<CliMode, string[]> = {
@@ -259,6 +299,7 @@ const HELP_MENUS: Record<CliMode, string[]> = {
     '  hostname    Set system network name',
     '  interface   Select an interface to configure',
     '  ip          Global IP configuration subcommands',
+    '  router      Enable a routing process',
     '  vlan        VLAN configuration',
     '  exit        Exit from configure mode',
     '  end         End current mode and down to EXEC'
@@ -276,6 +317,11 @@ const HELP_MENUS: Record<CliMode, string[]> = {
     '  default-router Default routers',
     '  exit           Exit from DHCP pool configuration mode',
     '  end            End current mode and down to EXEC'
+  ],
+  router: [
+    '  network     Enable routing on an IP network',
+    '  exit        Exit from routing protocol configuration mode',
+    '  end         End current mode and down to EXEC'
   ]
 };
 
@@ -299,14 +345,12 @@ export function getQuestionMarkHelp(input: string, mode: CliMode): string[] {
   const lastWord = parts[parts.length - 1].toLowerCase();
   const isTrailingSpace = input.endsWith(' ');
 
-  // 1. If typing a partial word, show matches for that word
   if (!isTrailingSpace && lastWord) {
     const availableWords = Array.from(new Set(IOS_WORDS[mode]));
     const matches = availableWords.filter(w => w.startsWith(lastWord));
     return matches.length > 0 ? matches.map(m => `  ${m}`) : ['% Unrecognized command'];
   }
   
-  // 2. If space is pressed, show context-aware submenu
   const firstWord = parts[0].toLowerCase();
   if (firstWord === 'show' || firstWord === 'sh') {
     return ['  ip   IP information', '  mac  MAC address information', '  arp  ARP table'];
@@ -319,6 +363,5 @@ export function getQuestionMarkHelp(input: string, mode: CliMode): string[] {
     return ['  mode    Set trunking mode', '  access  Set access mode characteristics'];
   }
 
-  // 3. Otherwise, show the default menu for this mode
   return HELP_MENUS[mode];
 }

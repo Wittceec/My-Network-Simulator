@@ -1,3 +1,4 @@
+import { runOSPF } from '../logic/ospf';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import type { Device } from '../../types/device';
 import { simulatePing, tracePath, animatePath } from '../logic/ping';
@@ -126,5 +127,14 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
     output.push(`'${cmd}' is not recognized as an internal or external command.`);
   }
 
-  return output;
+  // Trigger OSPF recalculation on any command that might alter topology
+  if (cmd === 'network' || cmd === 'shutdown' || cmd === 'no' || (cmd === 'ip' && args[1] === 'address')) {
+    // We use setTimeout so the Zustand state has time to save the new IP/Config 
+    // before the OSPF engine reads it
+    setTimeout(() => {
+      runOSPF();
+    }, 50);
+  }
+
+  return result;
 }

@@ -100,10 +100,8 @@ export function executeCommand(
           result.output.push(`Sending 5, 100-byte ICMP Echos to ${targetIp}, timeout is 2 seconds:`);
           const pingSuccess = simulatePing(device, targetIp);
           if (pingSuccess) {
-            // TRIGGER ANIMATION
             const trace = tracePath(device, targetIp);
             if (trace.success) animatePath(trace.links);
-
             result.output.push('!!!!!');
             result.output.push('Success rate is 100 percent (5/5)');
           } else {
@@ -119,10 +117,7 @@ export function executeCommand(
           result.output.push(`Type escape sequence to abort.`);
           result.output.push(`Tracing the route to ${targetIp}\n`);
           const traceResult = tracePath(device, targetIp);
-          
-          // TRIGGER ANIMATION
           animatePath(traceResult.links);
-
           traceResult.hops.forEach((hop, index) => {
             result.output.push(`  ${index + 1} ${hop} 0 msec 0 msec 0 msec`);
           });
@@ -233,4 +228,97 @@ export function executeCommand(
   }
 
   return result;
+}
+
+// --- NEW: CISCO IOS EMULATION HELPERS ---
+
+const IOS_WORDS: Record<CliMode, string[]> = {
+  user: ['enable', 'ping', 'traceroute', 'exit'],
+  privilege: ['configure', 'terminal', 'show', 'ip', 'interface', 'brief', 'route', 'mac', 'address-table', 'arp', 'ping', 'traceroute', 'exit', 'end'],
+  global: ['hostname', 'ip', 'route', 'dhcp', 'pool', 'interface', 'vlan', 'exit', 'end'],
+  interface: ['ip', 'address', 'shutdown', 'no', 'switchport', 'mode', 'access', 'trunk', 'vlan', 'exit', 'end'],
+  dhcp: ['network', 'default-router', 'exit', 'end']
+};
+
+const HELP_MENUS: Record<CliMode, string[]> = {
+  user: [
+    '  enable      Turn on privileged commands',
+    '  ping        Send echo messages',
+    '  traceroute  Trace route to destination',
+    '  exit        Exit from the EXEC'
+  ],
+  privilege: [
+    '  configure   Enter configuration mode',
+    '  show        Show running system information',
+    '  ping        Send echo messages',
+    '  traceroute  Trace route to destination',
+    '  exit        Exit from the EXEC',
+    '  end         End current mode and down to EXEC'
+  ],
+  global: [
+    '  hostname    Set system network name',
+    '  interface   Select an interface to configure',
+    '  ip          Global IP configuration subcommands',
+    '  vlan        VLAN configuration',
+    '  exit        Exit from configure mode',
+    '  end         End current mode and down to EXEC'
+  ],
+  interface: [
+    '  ip          Interface Internet Protocol config commands',
+    '  switchport  Set switching mode characteristics',
+    '  shutdown    Shutdown the selected interface',
+    '  no          Negate a command or set its defaults',
+    '  exit        Exit from interface configuration mode',
+    '  end         End current mode and down to EXEC'
+  ],
+  dhcp: [
+    '  network        Network number and mask',
+    '  default-router Default routers',
+    '  exit           Exit from DHCP pool configuration mode',
+    '  end            End current mode and down to EXEC'
+  ]
+};
+
+export function getTabCompletion(input: string, mode: CliMode): string {
+  const parts = input.split(' ');
+  const lastWord = parts[parts.length - 1].toLowerCase();
+  if (!lastWord) return input; 
+
+  const availableWords = Array.from(new Set(IOS_WORDS[mode]));
+  const matches = availableWords.filter(w => w.startsWith(lastWord));
+
+  if (matches.length === 1) {
+    parts[parts.length - 1] = matches[0];
+    return parts.join(' ') + ' ';
+  }
+  return input;
+}
+
+export function getQuestionMarkHelp(input: string, mode: CliMode): string[] {
+  const parts = input.split(' ');
+  const lastWord = parts[parts.length - 1].toLowerCase();
+  const isTrailingSpace = input.endsWith(' ');
+
+  // 1. If typing a partial word, show matches for that word
+  if (!isTrailingSpace && lastWord) {
+    const availableWords = Array.from(new Set(IOS_WORDS[mode]));
+    const matches = availableWords.filter(w => w.startsWith(lastWord));
+    return matches.length > 0 ? matches.map(m => `  ${m}`) : ['% Unrecognized command'];
+  }
+  
+  // 2. If space is pressed, show context-aware submenu
+  const firstWord = parts[0].toLowerCase();
+  if (firstWord === 'show' || firstWord === 'sh') {
+    return ['  ip   IP information', '  mac  MAC address information', '  arp  ARP table'];
+  }
+  if (firstWord === 'ip') {
+    if (mode === 'global') return ['  route  IP routing table', '  dhcp   DHCP server parameters'];
+    if (mode === 'interface') return ['  address  Interface IP address'];
+  }
+  if (firstWord === 'switchport') {
+    return ['  mode    Set trunking mode', '  access  Set access mode characteristics'];
+  }
+
+  // 3. Otherwise, show the default menu for this mode
+  return HELP_MENUS[mode];
 }

@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent, useRef, useEffect } from 'react';
 import { useUIStore } from '../../store/useUIStore';
 import { useNetworkStore } from '../../store/useNetworkStore';
-import { executeCommand, type CliMode } from '../../core/parser/cliParser';
+import { executeCommand, getTabCompletion, getQuestionMarkHelp, type CliMode } from '../../core/parser/cliParser';
 import { executePcCommand } from '../../core/parser/pcParser';
 
 interface Props {
@@ -9,7 +9,8 @@ interface Props {
   index: number;
 }
 
-const QUICK_KEYS_ROUTER = ['enable', 'config t', 'show ip int br', 'show ip route', 'ping ', 'exit'];
+// Added Tab and ? to the mobile quick keys!
+const QUICK_KEYS_ROUTER = ['Tab', '?', 'enable', 'config t', 'show ip int br', 'show ip route', 'exit'];
 const QUICK_KEYS_PC = ['ipconfig', 'ping ', 'arp -a', 'tracert ', 'cls'];
 
 export default function TerminalWindow({ deviceId, index }: Props) {
@@ -114,11 +115,32 @@ export default function TerminalWindow({ deviceId, index }: Props) {
           setHistoryIndex(newIndex); setInput(commandHistory[newIndex]);
         }
       }
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      if (!isPC) setInput(getTabCompletion(input, mode));
+    } else if (e.key === '?') {
+      e.preventDefault();
+      if (!isPC) {
+        const helpText = getQuestionMarkHelp(input, mode);
+        // We print the history but LEAVE the input intact, just like real Cisco!
+        setHistory((prev) => [...prev, `${promptStr} ${input}?`, ...helpText]);
+      } else {
+        setInput(prev => prev + '?');
+      }
     }
   };
 
   const insertQuick = (k: string) => {
-    setInput((prev) => prev + k);
+    if (k === 'Tab') {
+      if (!isPC) setInput(getTabCompletion(input, mode));
+    } else if (k === '?') {
+      if (!isPC) {
+        const helpText = getQuestionMarkHelp(input, mode);
+        setHistory((prev) => [...prev, `${promptStr} ${input}?`, ...helpText]);
+      }
+    } else {
+      setInput((prev) => prev + k);
+    }
     inputRef.current?.focus();
   };
 
@@ -138,7 +160,7 @@ export default function TerminalWindow({ deviceId, index }: Props) {
           <span
             className="dot close"
             onMouseDown={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => { e.stopPropagation(); closeTerminal(deviceId); }} // Fixes touch screens
+            onTouchEnd={(e) => { e.stopPropagation(); closeTerminal(deviceId); }}
             onClick={() => closeTerminal(deviceId)}
             title="Close"
           ></span>
@@ -167,7 +189,6 @@ export default function TerminalWindow({ deviceId, index }: Props) {
 
       {isMobile && (
         <div style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '8px 10px', display: 'flex', gap: 6, overflowX: 'auto' }}>
-          {/* Explicit Mobile Close Button */}
           <button className="btn" style={{ padding: '6px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0, color: '#ef5350', borderColor: '#ef5350' }} onClick={() => closeTerminal(deviceId)}>
             Close
           </button>

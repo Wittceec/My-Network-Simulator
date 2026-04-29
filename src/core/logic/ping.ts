@@ -2,7 +2,6 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import { isSameSubnet } from '../../utils/ipMath';
 import type { Device } from '../../types/device';
 
-// Helper to find the physical cable between two devices
 function getLinkBetween(devAId: string, devBId: string): string | null {
   const links = Object.values(useNetworkStore.getState().links);
   const link = links.find(l => 
@@ -22,7 +21,9 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
   if (isLocal) return true;
 
   for (const srcIntf of Object.values(sourceDevice.interfaces)) {
-    if (!srcIntf.isUp || !srcIntf.ipv4) continue;
+    // STP CHECK: Do not forward out of a blocked port
+    if (!srcIntf.isUp || !srcIntf.ipv4 || srcIntf.stpState === 'blocking') continue;
+    
     const connectedLinks = Object.values(allLinks).filter(l => l.sourceDeviceId === sourceDevice.id || l.targetDeviceId === sourceDevice.id);
 
     for (const link of connectedLinks) {
@@ -42,7 +43,8 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
       }
 
       for (const neighborIntf of Object.values(neighborDevice.interfaces)) {
-        if (neighborIntf.isUp && neighborIntf.ipv4?.ip === targetIp) {
+        // STP CHECK: Do not receive on a blocked port
+        if (neighborIntf.isUp && neighborIntf.ipv4?.ip === targetIp && neighborIntf.stpState !== 'blocking') {
           const srcVlan = srcIntf.accessVlan || 1;
           const targetVlan = neighborIntf.accessVlan || 1;
 
@@ -68,7 +70,6 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
   return false;
 }
 
-// Updated TracePath: Now returns the physical links it crossed!
 export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<string> = new Set()): { success: boolean, hops: string[], links: string[] } {
   const state = useNetworkStore.getState();
   const allDevices = state.devices;
@@ -82,7 +83,9 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
   }
 
   for (const srcIntf of Object.values(sourceDevice.interfaces)) {
-    if (!srcIntf.isUp || !srcIntf.ipv4) continue;
+    // STP CHECK
+    if (!srcIntf.isUp || !srcIntf.ipv4 || srcIntf.stpState === 'blocking') continue;
+    
     const connectedLinks = Object.values(allLinks).filter(l => l.sourceDeviceId === sourceDevice.id || l.targetDeviceId === sourceDevice.id);
     for (const link of connectedLinks) {
       const neighborId = link.sourceDeviceId === sourceDevice.id ? link.targetDeviceId : link.sourceDeviceId;
@@ -90,7 +93,8 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
       if (!neighborDevice) continue;
 
       for (const neighborIntf of Object.values(neighborDevice.interfaces)) {
-        if (neighborIntf.isUp && neighborIntf.ipv4?.ip === targetIp) {
+        // STP CHECK
+        if (neighborIntf.isUp && neighborIntf.ipv4?.ip === targetIp && neighborIntf.stpState !== 'blocking') {
           const srcVlan = srcIntf.accessVlan || 1;
           const targetVlan = neighborIntf.accessVlan || 1;
           if (srcVlan === targetVlan && isSameSubnet(srcIntf.ipv4.ip, neighborIntf.ipv4.ip, srcIntf.ipv4.mask)) {
@@ -121,17 +125,14 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
   return { success: false, hops: ['* Request timed out.'], links: [] };
 }
 
-// NEW: The Animation Controller!
 export async function animatePath(links: string[]) {
   const setActiveLink = useNetworkStore.getState().setActiveLink;
   
   for (const linkId of links) {
     if (!linkId) continue;
     setActiveLink(linkId);
-    // Pause for 600ms on this cable before moving to the next one
     await new Promise(resolve => setTimeout(resolve, 600)); 
   }
   
-  // Turn off the glow when finished
   setActiveLink(null);
 }

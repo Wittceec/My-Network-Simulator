@@ -1,8 +1,8 @@
 import { useNetworkStore } from '../../store/useNetworkStore';
 import type { Device } from '../../types/device';
 import { simulatePing, tracePath, animatePath } from '../logic/ping';
+import { runOSPF } from '../logic/ospf';
 
-// NEW: Added 'router' mode
 export type CliMode = 'user' | 'privilege' | 'global' | 'interface' | 'dhcp' | 'router';
 
 interface ParserResult {
@@ -74,7 +74,6 @@ export function executeCommand(
             if (intf.isUp && intf.ipv4) result.output.push(`C     ${intf.ipv4.ip}/24 is directly connected, ${intf.id}`);
           });
           device.routingTable.forEach(r => {
-            // UPDATED: Now identifies dynamic OSPF routes in the table
             const code = r.protocol === 'ospf' ? 'O' : 'S';
             const metric = r.protocol === 'ospf' ? '[110/2]' : '[1/0]';
             result.output.push(`${code}     ${r.network}/24 ${metric} via ${r.nextHopIp}`);
@@ -94,8 +93,36 @@ export function executeCommand(
             result.output.push(`Internet  ${ip.padEnd(16)} -          ${mac}  ARPA   FastEthernet0/0`);
           });
         } else if (args[1] === 'ip' && args[2] === 'ospf' && args[3] === 'neighbor') {
-          // Placeholder for the engine!
           result.output.push('Neighbor ID     Pri   State           Dead Time   Address         Interface');
+        } else if (args[1] === 'spanning-tree') {
+          const isRoot = (device as any).isRootBridge;
+          result.output.push(isRoot ? 'This bridge is the root' : 'Spanning tree enabled protocol ieee');
+          result.output.push('\nInterface           Role Sts Cost      Prio.Nbr Type');
+          result.output.push('------------------- ---- --- --------- -------- --------------------------------');
+          Object.values(device.interfaces).forEach(intf => {
+             const state = intf.stpState === 'blocking' ? 'BLK' : 'FWD';
+             const role = intf.stpState === 'blocking' ? 'Altn' : 'Desg';
+             result.output.push(`${intf.id.padEnd(19)} ${role}  ${state} 19        128.1    P2p`);
+          });
+        } else if (args[1] === 'access-lists') {
+          const acls = Object.values(device.acls);
+          if (acls.length === 0) {
+            result.output.push('No access lists configured.');
+          } else {
+            acls.forEach(acl => {
+              result.output.push(`${acl.type === 'standard' ? 'Standard' : 'Extended'} IP access list ${acl.id}`);
+              acl.rules.forEach(r => {
+                const srcStr = r.sourceIp === '0.0.0.0' && r.sourceWildcard === '255.255.255.255' ? 'any' : `${r.sourceIp} ${r.sourceWildcard}`;
+                const dstStr = r.destIp === '0.0.0.0' && r.destWildcard === '255.255.255.255' ? 'any' : `${r.destIp} ${r.destWildcard}`;
+                
+                if (acl.type === 'standard') {
+                  result.output.push(`    ${r.sequence} ${r.action} ${srcStr}`);
+                } else {
+                  result.output.push(`    ${r.sequence} ${r.action} ${r.protocol} ${srcStr} ${dstStr}`);
+                }
+              });
+            });
+          }
         } else {
           result.output.push('% Incomplete command.');
         }
@@ -158,7 +185,6 @@ export function executeCommand(
           }));
         }
       } else if (cmd === 'router' && args[1] === 'ospf') {
-        // NEW: OSPF Router Mode Trigger
         const processId = args[2];
         if (processId) {
           result.newMode = 'router';
@@ -167,6 +193,51 @@ export function executeCommand(
             ...d,
             ospf: (d as any).ospf || { processId, networks: [] }
           }));
+        }
+      } else if (cmd === 'access-list') {
+        const aclId = args[1];
+        const action = args[2] as 'permit' | 'deny';
+        
+        if (!aclId || !action) {
+          result.output.push('% Incomplete command.');
+        } else {
+          const idNum = parseInt(aclId);
+          const isStandard = idNum >= 1 && idNum <= 99;
+          const isExtended = idNum >= 100 && idNum <= 199;
+
+          let protocol = 'ip';
+          let srcIp = '', srcWild = '', dstIp = '0.0.0.0', dstWild = '255.255.255.255';
+
+          if (isStandard) {
+            let argIdx = 3;
+            if (args[argIdx] === 'host') { srcIp = args[argIdx + 1]; srcWild = '0.0.0.0'; }
+            else if (args[argIdx] === 'any') { srcIp = '0.0.0.0'; srcWild = '255.255.255.255'; }
+            else { srcIp = args[argIdx]; srcWild = args[argIdx + 1] || '0.0.0.0'; }
+
+            updateDevice(device.id, (d) => {
+              const currentAcl = d.acls[aclId] || { id: aclId, type: 'standard', rules: [] };
+              const newRule = { sequence: currentAcl.rules.length * 10 + 10, action, protocol, sourceIp: srcIp, sourceWildcard: srcWild, destIp: dstIp, destWildcard: dstWild };
+              return { ...d, acls: { ...d.acls, [aclId]: { ...currentAcl, rules: [...currentAcl.rules, newRule] } } };
+            });
+          } else if (isExtended) {
+            protocol = args[3];
+            let argIdx = 4;
+            if (args[argIdx] === 'host') { srcIp = args[argIdx + 1]; srcWild = '0.0.0.0'; argIdx += 2; }
+            else if (args[argIdx] === 'any') { srcIp = '0.0.0.0'; srcWild = '255.255.255.255'; argIdx += 1; }
+            else { srcIp = args[argIdx]; srcWild = args[argIdx + 1]; argIdx += 2; }
+
+            if (args[argIdx] === 'host') { dstIp = args[argIdx + 1]; dstWild = '0.0.0.0'; }
+            else if (args[argIdx] === 'any') { dstIp = '0.0.0.0'; dstWild = '255.255.255.255'; }
+            else { dstIp = args[argIdx]; dstWild = args[argIdx + 1] || '0.0.0.0'; }
+
+            updateDevice(device.id, (d) => {
+              const currentAcl = d.acls[aclId] || { id: aclId, type: 'extended', rules: [] };
+              const newRule = { sequence: currentAcl.rules.length * 10 + 10, action, protocol, sourceIp: srcIp, sourceWildcard: srcWild, destIp: dstIp, destWildcard: dstWild };
+              return { ...d, acls: { ...d.acls, [aclId]: { ...currentAcl, rules: [...currentAcl.rules, newRule] } } };
+            });
+          } else {
+            result.output.push('% Invalid ACL number.');
+          }
         }
       } else if (cmd === 'interface' || cmd === 'int') {
         result.newMode = 'interface';
@@ -192,6 +263,28 @@ export function executeCommand(
           const intf = d.interfaces[currentContext] || { id: currentContext, shortName: currentContext, isUp: false, accessVlan: 1, mode: 'routed', macAddress: '0000.0000.0000' };
           return { ...d, interfaces: { ...d.interfaces, [currentContext]: { ...intf, ipv4: { ip, mask } } } };
         });
+      } else if (cmd === 'ip' && args[1] === 'access-group') {
+        const aclId = args[2];
+        const direction = args[3] as 'in' | 'out';
+        if (aclId && (direction === 'in' || direction === 'out')) {
+          updateDevice(device.id, (d) => {
+            const intf = d.interfaces[currentContext];
+            if (!intf) return d;
+            return {
+              ...d,
+              interfaces: {
+                ...d.interfaces,
+                [currentContext]: {
+                  ...intf,
+                  inboundAclId: direction === 'in' ? aclId : intf.inboundAclId,
+                  outboundAclId: direction === 'out' ? aclId : intf.outboundAclId,
+                }
+              }
+            };
+          });
+        } else {
+          result.output.push('% Incomplete command.');
+        }
       } else if (cmd === 'no' && (args[1] === 'shutdown' || args[1] === 'shut')) {
         updateDevice(device.id, (d) => {
           const intf = d.interfaces[currentContext] || { id: currentContext, shortName: currentContext, isUp: false, accessVlan: 1, mode: 'routed', macAddress: '0000.0000.0000' };
@@ -242,14 +335,12 @@ export function executeCommand(
       }
       break;
 
-    // NEW: The OSPF Sub-menu!
     case 'router':
       if (cmd === 'network') {
         const [network, wildcard, areaKeyword, area] = [args[1], args[2], args[3], args[4]];
         if (network && wildcard && areaKeyword === 'area' && area) {
           updateDevice(device.id, (d) => {
             const currentOspf = (d as any).ospf || { processId: '1', networks: [] };
-            // Prevent duplicate network statements
             if (currentOspf.networks.some((n: any) => n.network === network)) return d;
             return {
               ...d,
@@ -266,14 +357,18 @@ export function executeCommand(
       result.output.push('% Unknown command');
   }
 
+  if (cmd === 'network' || cmd === 'shutdown' || cmd === 'no' || (cmd === 'ip' && args[1] === 'address')) {
+    setTimeout(() => {
+      runOSPF();
+    }, 50);
+  }
+
   return result;
 }
 
-// --- CISCO IOS EMULATION HELPERS ---
-
 const IOS_WORDS: Record<CliMode, string[]> = {
   user: ['enable', 'ping', 'traceroute', 'exit'],
-  privilege: ['configure', 'terminal', 'show', 'ip', 'interface', 'brief', 'route', 'mac', 'address-table', 'arp', 'ping', 'traceroute', 'exit', 'end'],
+  privilege: ['configure', 'terminal', 'show', 'ip', 'interface', 'brief', 'route', 'mac', 'address-table', 'arp', 'ping', 'traceroute', 'spanning-tree', 'exit', 'end'],
   global: ['hostname', 'ip', 'route', 'router', 'dhcp', 'pool', 'interface', 'vlan', 'exit', 'end'],
   interface: ['ip', 'address', 'shutdown', 'no', 'switchport', 'mode', 'access', 'trunk', 'vlan', 'exit', 'end'],
   dhcp: ['network', 'default-router', 'exit', 'end'],
@@ -288,12 +383,13 @@ const HELP_MENUS: Record<CliMode, string[]> = {
     '  exit        Exit from the EXEC'
   ],
   privilege: [
-    '  configure   Enter configuration mode',
-    '  show        Show running system information',
-    '  ping        Send echo messages',
-    '  traceroute  Trace route to destination',
-    '  exit        Exit from the EXEC',
-    '  end         End current mode and down to EXEC'
+    '  configure      Enter configuration mode',
+    '  show           Show running system information',
+    '  ping           Send echo messages',
+    '  traceroute     Trace route to destination',
+    '  spanning-tree  Show Spanning Tree information',
+    '  exit           Exit from the EXEC',
+    '  end            End current mode and down to EXEC'
   ],
   global: [
     '  hostname    Set system network name',
@@ -353,7 +449,7 @@ export function getQuestionMarkHelp(input: string, mode: CliMode): string[] {
   
   const firstWord = parts[0].toLowerCase();
   if (firstWord === 'show' || firstWord === 'sh') {
-    return ['  ip   IP information', '  mac  MAC address information', '  arp  ARP table'];
+    return ['  ip             IP information', '  mac            MAC address information', '  arp            ARP table', '  spanning-tree  Show Spanning Tree information'];
   }
   if (firstWord === 'ip') {
     if (mode === 'global') return ['  route  IP routing table', '  dhcp   DHCP server parameters'];

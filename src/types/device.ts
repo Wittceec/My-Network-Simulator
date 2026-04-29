@@ -7,7 +7,7 @@ export interface IPv4Config {
   mask: string; 
 }
 
-export interface NetworkInterface {
+export interface Interface {
   id: string;          
   shortName: string;   
   isUp: boolean;       
@@ -18,6 +18,7 @@ export interface NetworkInterface {
   trunkAllowedVlans?: number[]; 
   inboundAclId?: string;
   outboundAclId?: string;
+  stpState?: 'forwarding' | 'blocking'; // <-- ADDED FOR STP
 }
 
 export interface Route {
@@ -53,7 +54,17 @@ export interface Device {
   routingTable: Route[];
   macAddressTable: Record<string, any>;
   arpTable?: Record<string, string>;
-  dhcpPools?: Record<string, any>; // Add this line!
+  dhcpPools?: Record<string, any>; 
   vlans: Record<number, string>;
   acls: Record<string, any>;
+  ospf?: { processId: string; networks: { network: string; wildcard: string; area: string }[] }; // <-- ADDED FOR OSPF
+  isRootBridge?: boolean; // <-- ADDED FOR STP
+}
+
+export interface Link {
+  id: string;
+  sourceDeviceId: string;
+  sourceInterfaceId: string;
+  targetDeviceId: string;
+  targetInterfaceId: string;
 }

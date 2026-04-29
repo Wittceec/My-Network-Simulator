@@ -2,44 +2,29 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import { isSameSubnet } from '../../utils/ipMath';
 import type { Device } from '../../types/device';
 
-// --- NEW: ACL MATH ENGINE ---
+// --- ACL MATH ENGINE ---
 function matchesWildcard(ip: string, network: string, wildcard: string): boolean {
-  if (network === '0.0.0.0' && wildcard === '255.255.255.255') return true; // 'any' keyword
-  
+  if (network === '0.0.0.0' && wildcard === '255.255.255.255') return true; 
   const ipParts = ip.split('.').map(Number);
   const netParts = network.split('.').map(Number);
   const wildParts = wildcard.split('.').map(Number);
-  
   for(let i = 0; i < 4; i++) {
-    // If the wildcard octet is 0, the IP octet MUST match the Network octet exactly
     if (wildParts[i] === 0 && ipParts[i] !== netParts[i]) return false;
   }
   return true;
 }
 
 function isPermittedByAcl(device: Device, aclId: string | undefined, srcIp: string, dstIp: string): boolean {
-  if (!aclId) return true; // No ACL assigned to this interface = traffic allowed
-  
+  if (!aclId) return true; 
   const acl = device.acls[aclId];
   if (!acl || acl.rules.length === 0) return true;
-
-  // Read rules top-down based on sequence number
   const rules = [...acl.rules].sort((a, b) => a.sequence - b.sequence);
-
   for (const rule of rules) {
     const srcMatch = matchesWildcard(srcIp, rule.sourceIp, rule.sourceWildcard);
-    
     let dstMatch = true;
-    if (acl.type === 'extended') {
-      dstMatch = matchesWildcard(dstIp, rule.destIp, rule.destWildcard);
-    }
-
-    if (srcMatch && dstMatch) {
-      return rule.action === 'permit';
-    }
+    if (acl.type === 'extended') dstMatch = matchesWildcard(dstIp, rule.destIp, rule.destWildcard);
+    if (srcMatch && dstMatch) return rule.action === 'permit';
   }
-  
-  // Implicit Deny Any at the end of every ACL!
   return false; 
 }
 // ----------------------------
@@ -53,37 +38,60 @@ function getLinkBetween(devAId: string, devBId: string): string | null {
   return link ? link.id : null;
 }
 
-// UPDATED: Now tracks originalSrcIp for accurate ACL filtering across multiple hops
 export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number = 5, originalSrcIp?: string): boolean {
   if (ttl <= 0) return false;
   const state = useNetworkStore.getState();
   const allDevices = state.devices;
   const allLinks = state.links;
 
-  // The IP this packet was originally generated from
   const srcIp = originalSrcIp || Object.values(sourceDevice.interfaces).find(i => i.isUp && i.ipv4)?.ipv4?.ip || '0.0.0.0';
-
   const isLocal = Object.values(sourceDevice.interfaces).some(intf => intf.ipv4?.ip === targetIp && intf.isUp);
   if (isLocal) return true;
 
   for (const srcIntf of Object.values(sourceDevice.interfaces)) {
     if (!srcIntf.isUp || !srcIntf.ipv4 || srcIntf.stpState === 'blocking') continue;
-    
-    // ACL CHECK: Outbound on source interface
     if (!isPermittedByAcl(sourceDevice, srcIntf.outboundAclId, srcIp, targetIp)) continue;
 
-    const connectedLinks = Object.values(allLinks).filter(l => l.sourceDeviceId === sourceDevice.id || l.targetDeviceId === sourceDevice.id);
+    // ROUTER-ON-A-STICK: Convert 'fa0/0.10' -> 'fa0/0' to find the physical cable
+    const physicalSrcIntf = srcIntf.id.split('.')[0];
+    const connectedLinks = Object.values(allLinks).filter(l => 
+      (l.sourceDeviceId === sourceDevice.id && l.sourceInterfaceId === physicalSrcIntf) || 
+      (l.targetDeviceId === sourceDevice.id && l.targetInterfaceId === physicalSrcIntf)
+    );
 
     for (const link of connectedLinks) {
       const neighborId = link.sourceDeviceId === sourceDevice.id ? link.targetDeviceId : link.sourceDeviceId;
       const neighborDevice = allDevices[neighborId];
       if (!neighborDevice) continue;
 
-      if (neighborDevice.type === 'switch') {
-        const switchPort = link.sourceDeviceId === neighborDevice.id ? link.sourceInterfaceId : link.targetInterfaceId;
-        const srcMac = srcIntf.macAddress !== '0000.0000.0000' && srcIntf.macAddress ? srcIntf.macAddress : `0000.1111.${sourceDevice.id.padStart(4, '0')}`;
-        const vlan = srcIntf.accessVlan || 1;
+      const switchPort = link.sourceDeviceId === neighborDevice.id ? link.sourceInterfaceId : link.targetInterfaceId;
+      const srcMac = srcIntf.macAddress !== '0000.0000.0000' && srcIntf.macAddress ? srcIntf.macAddress : `0000.1111.${sourceDevice.id.padStart(4, '0')}`;
+      const vlan = srcIntf.accessVlan || 1;
 
+      if (neighborDevice.type === 'switch') {
+        const neighborPhysIntf = neighborDevice.interfaces[switchPort];
+        
+        // NEW: PORT SECURITY ENFORCER
+        if (neighborPhysIntf?.portSecurity?.enabled) {
+          if (!neighborPhysIntf.portSecurity.macs.includes(srcMac)) {
+             if (neighborPhysIntf.portSecurity.macs.length < neighborPhysIntf.portSecurity.max) {
+                 // Learn new MAC
+                 state.updateDevice(neighborDevice.id, (d) => ({
+                    ...d, interfaces: { ...d.interfaces, [switchPort]: { ...neighborPhysIntf, portSecurity: { ...neighborPhysIntf.portSecurity!, macs: [...neighborPhysIntf.portSecurity!.macs, srcMac] } } }
+                 }));
+             } else {
+                 // VIOLATION: Shut it down and drop the packet!
+                 if (neighborPhysIntf.portSecurity.violation === 'shutdown') {
+                     state.updateDevice(neighborDevice.id, (d) => ({
+                         ...d, interfaces: { ...d.interfaces, [switchPort]: { ...neighborPhysIntf, isUp: false } }
+                     }));
+                 }
+                 continue; 
+             }
+          }
+        }
+
+        // MAC Table Learning
         state.updateDevice(neighborDevice.id, (sw) => {
           if (sw.macAddressTable[srcMac]?.port === switchPort) return sw;
           return { ...sw, macAddressTable: { ...sw.macAddressTable, [srcMac]: { port: switchPort, vlan: vlan } } };
@@ -92,15 +100,10 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
 
       for (const neighborIntf of Object.values(neighborDevice.interfaces)) {
         if (neighborIntf.isUp && neighborIntf.ipv4?.ip === targetIp && neighborIntf.stpState !== 'blocking') {
-          
-          // ACL CHECK: Inbound on destination interface
           if (!isPermittedByAcl(neighborDevice, neighborIntf.inboundAclId, srcIp, targetIp)) continue;
 
-          const srcVlan = srcIntf.accessVlan || 1;
           const targetVlan = neighborIntf.accessVlan || 1;
-
-          if (srcVlan === targetVlan && isSameSubnet(srcIntf.ipv4.ip, neighborIntf.ipv4.ip, srcIntf.ipv4.mask)) {
-            const srcMac = srcIntf.macAddress !== '0000.0000.0000' && srcIntf.macAddress ? srcIntf.macAddress : `0000.1111.${sourceDevice.id.padStart(4, '0')}`;
+          if (vlan === targetVlan && isSameSubnet(srcIntf.ipv4.ip, neighborIntf.ipv4.ip, srcIntf.ipv4.mask)) {
             const targetMac = neighborIntf.macAddress !== '0000.0000.0000' && neighborIntf.macAddress ? neighborIntf.macAddress : `0000.1111.${neighborDevice.id.padStart(4, '0')}`;
             state.updateDevice(sourceDevice.id, (d) => ({ ...d, arpTable: { ...(d.arpTable || {}), [targetIp]: targetMac } }));
             state.updateDevice(neighborDevice.id, (d) => ({ ...d, arpTable: { ...(d.arpTable || {}), [srcIntf.ipv4!.ip]: srcMac } }));
@@ -114,14 +117,12 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
   for (const route of sourceDevice.routingTable) {
     if (isSameSubnet(targetIp, route.network, route.mask)) {
       const nextHopDevice = Object.values(allDevices).find(d => Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp));
-      // Pass the original source IP down to the next hop!
       if (nextHopDevice) return simulatePing(nextHopDevice, targetIp, ttl - 1, srcIp);
     }
   }
   return false;
 }
 
-// UPDATED: TracePath gets the identical ACL treatment
 export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<string> = new Set(), originalSrcIp?: string): { success: boolean, hops: string[], links: string[] } {
   const state = useNetworkStore.getState();
   const allDevices = state.devices;
@@ -138,11 +139,14 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
 
   for (const srcIntf of Object.values(sourceDevice.interfaces)) {
     if (!srcIntf.isUp || !srcIntf.ipv4 || srcIntf.stpState === 'blocking') continue;
-    
-    // ACL CHECK
     if (!isPermittedByAcl(sourceDevice, srcIntf.outboundAclId, srcIp, targetIp)) return { success: false, hops: ['* (Administratively Prohibited)'], links: [] };
 
-    const connectedLinks = Object.values(allLinks).filter(l => l.sourceDeviceId === sourceDevice.id || l.targetDeviceId === sourceDevice.id);
+    const physicalSrcIntf = srcIntf.id.split('.')[0];
+    const connectedLinks = Object.values(allLinks).filter(l => 
+      (l.sourceDeviceId === sourceDevice.id && l.sourceInterfaceId === physicalSrcIntf) || 
+      (l.targetDeviceId === sourceDevice.id && l.targetInterfaceId === physicalSrcIntf)
+    );
+
     for (const link of connectedLinks) {
       const neighborId = link.sourceDeviceId === sourceDevice.id ? link.targetDeviceId : link.sourceDeviceId;
       const neighborDevice = allDevices[neighborId];
@@ -150,15 +154,12 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
 
       for (const neighborIntf of Object.values(neighborDevice.interfaces)) {
         if (neighborIntf.isUp && neighborIntf.ipv4?.ip === targetIp && neighborIntf.stpState !== 'blocking') {
-          
-          // ACL CHECK
           if (!isPermittedByAcl(neighborDevice, neighborIntf.inboundAclId, srcIp, targetIp)) {
              return { success: false, hops: ['* (Administratively Prohibited)'], links: [] };
           }
-
-          const srcVlan = srcIntf.accessVlan || 1;
+          const vlan = srcIntf.accessVlan || 1;
           const targetVlan = neighborIntf.accessVlan || 1;
-          if (srcVlan === targetVlan && isSameSubnet(srcIntf.ipv4.ip, neighborIntf.ipv4.ip, srcIntf.ipv4.mask)) {
+          if (vlan === targetVlan && isSameSubnet(srcIntf.ipv4.ip, neighborIntf.ipv4.ip, srcIntf.ipv4.mask)) {
             return { success: true, hops: [targetIp], links: [link.id] };
           }
         }
@@ -168,9 +169,7 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
 
   for (const route of sourceDevice.routingTable) {
     if (isSameSubnet(targetIp, route.network, route.mask)) {
-      const nextHopDevice = Object.values(allDevices).find(d =>
-        Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp)
-      );
+      const nextHopDevice = Object.values(allDevices).find(d => Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp));
       if (nextHopDevice) {
         const linkId = getLinkBetween(sourceDevice.id, nextHopDevice.id);
         const nextTrace = tracePath(nextHopDevice, targetIp, visited, srcIp);

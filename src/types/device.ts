@@ -18,7 +18,9 @@ export interface Interface {
   trunkAllowedVlans?: number[]; 
   inboundAclId?: string;
   outboundAclId?: string;
-  stpState?: 'forwarding' | 'blocking'; // <-- ADDED FOR STP
+  stpState?: 'forwarding' | 'blocking';
+  // NEW: Port Security Tracker
+  portSecurity?: { enabled: boolean; max: number; violation: 'shutdown' | 'restrict'; macs: string[] }; 
 }
 
 export interface Route {
@@ -57,8 +59,8 @@ export interface Device {
   dhcpPools?: Record<string, any>; 
   vlans: Record<number, string>;
   acls: Record<string, any>;
-  ospf?: { processId: string; networks: { network: string; wildcard: string; area: string }[] }; // <-- ADDED FOR OSPF
-  isRootBridge?: boolean; // <-- ADDED FOR STP
+  ospf?: { processId: string; networks: { network: string; wildcard: string; area: string }[] }; 
+  isRootBridge?: boolean; 
 }
 
 export interface Link {

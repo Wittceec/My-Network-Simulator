@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNetworkStore } from '../../store/useNetworkStore';
+import { Server, Monitor, HardDrive, Download, Upload, GripVertical } from 'lucide-react';
 
 const DEVICE_META = {
-  router: { glyph: '◉', label: 'Router', sub: 'L3 · routing · DHCP' },
-  switch: { glyph: '▦', label: 'Switch', sub: 'L2 · VLAN · trunking' },
-  pc:     { glyph: '▭', label: 'PC',     sub: 'Host · ipconfig · ping' },
+  router: { glyph: <Server size={20} strokeWidth={2.5} />, label: 'Router', sub: 'L3 · routing · DHCP' },
+  switch: { glyph: <HardDrive size={20} strokeWidth={2.5} />, label: 'Switch', sub: 'L2 · VLAN · trunking' },
+  pc:     { glyph: <Monitor size={20} strokeWidth={2.5} />, label: 'PC',     sub: 'Host · ipconfig · ping' },
 } as const;
 
 type DevKind = keyof typeof DEVICE_META;
@@ -96,7 +97,7 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
                     <span className="name">{meta.label}</span>
                     <span className="sub">{meta.sub}</span>
                   </div>
-                  <span className="grab">⋮⋮</span>
+                  <span className="grab"><GripVertical size={16} /></span>
                 </div>
               );
             })}
@@ -134,9 +135,9 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
         </div>
       </div>
 
-      <div style={{ borderTop: '1px solid var(--border)', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <button className="btn" onClick={handleExport}><span className="mono">↓</span>Export Lab</button>
-        <button className="btn" onClick={handleImport}><span className="mono">↑</span>Import Lab</button>
+      <div style={{ borderTop: '1px solid var(--border)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <button className="btn" onClick={handleExport}><Download size={16} />Export Lab</button>
+        <button className="btn" onClick={handleImport}><Upload size={16} />Import Lab</button>
       </div>
     </>
   );

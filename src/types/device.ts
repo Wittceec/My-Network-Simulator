@@ -21,6 +21,7 @@ export interface Interface {
   stpState?: 'forwarding' | 'blocking';
   // NEW: Port Security Tracker
   portSecurity?: { enabled: boolean; max: number; violation: 'shutdown' | 'restrict'; macs: string[] }; 
+  description?: string;
 }
 
 export interface Route {
@@ -58,9 +59,18 @@ export interface Device {
   arpTable?: Record<string, string>;
   dhcpPools?: Record<string, any>; 
   vlans: Record<number, string>;
+  powerOn?: boolean;
   acls: Record<string, any>;
   ospf?: { processId: string; networks: { network: string; wildcard: string; area: string }[] }; 
   isRootBridge?: boolean; 
+  startupConfigSaved?: boolean;
+  enableSecret?: string;
+  enablePassword?: string;
+  bannerMotd?: string;
+  lines?: {
+    console?: { password?: string; login?: boolean };
+    vty?: { password?: string; login?: boolean };
+  };
 }
 
 export interface Link {

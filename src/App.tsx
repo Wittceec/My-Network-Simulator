@@ -3,7 +3,9 @@ import { ReactFlowProvider } from '@xyflow/react';
 import NetworkCanvas from './components/Canvas/NetworkCanvas';
 import Sidebar, { SidebarSheet } from './components/UI/Sidebar';
 import TerminalManager from './components/Terminal/TerminalManager';
+import LabSelector from './components/UI/LabSelector';
 import { useNetworkStore } from './store/useNetworkStore';
+import { Menu, Plus, Hexagon, BookOpen } from 'lucide-react';
 
 function useIsMobile() {
   const [m, setM] = useState(
@@ -18,7 +20,12 @@ function useIsMobile() {
   return m;
 }
 
-function Topbar({ onMenu }: { onMenu: () => void }) {
+interface TopbarProps {
+  onMenu: () => void;
+  onOpenLibrary: () => void;
+}
+
+function Topbar({ onMenu, onOpenLibrary }: TopbarProps) {
   const isMobile = useIsMobile();
   const deviceCount = useNetworkStore((s) => Object.keys(s.devices).length);
 
@@ -30,11 +37,11 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
           onClick={onMenu}
           aria-label="Open device menu"
         >
-          <span className="mono" style={{ fontSize: 18 }}>≡</span>
+          <Menu size={20} />
         </button>
       )}
       <div className="brand">
-        <span className="mark mono">⬢</span>
+        <span className="mark"><Hexagon size={18} fill="currentColor" /></span>
         <span className="name">NETSIM</span>
         <span className="ver mono">v1.0</span>
       </div>
@@ -50,12 +57,15 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
           <span className="lab-pill">
             {deviceCount === 0 ? 'EMPTY' : `${deviceCount} DEVICES`}
           </span>
+          <button className="btn btn-ghost" onClick={onOpenLibrary} style={{ marginLeft: 16 }}>
+            <BookOpen size={16} /> Library
+          </button>
         </>
       )}
       <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
         {isMobile && (
           <button className="btn btn-primary btn-icon" onClick={onMenu} aria-label="Add device">
-            <span className="mono" style={{ fontSize: 20 }}>+</span>
+            <Plus size={20} />
           </button>
         )}
       </div>
@@ -65,6 +75,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
 
 function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   return (
     <div
@@ -78,13 +89,14 @@ function App() {
       }}
     >
       <ReactFlowProvider>
-        <Topbar onMenu={() => setSheetOpen(true)} />
+        <Topbar onMenu={() => setSheetOpen(true)} onOpenLibrary={() => setLibraryOpen(true)} />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
           <Sidebar />
           <NetworkCanvas />
           <TerminalManager />
         </div>
         {sheetOpen && <SidebarSheet onClose={() => setSheetOpen(false)} />}
+        {libraryOpen && <LabSelector onClose={() => setLibraryOpen(false)} />}
       </ReactFlowProvider>
     </div>
   );

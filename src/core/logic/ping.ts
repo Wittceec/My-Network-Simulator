@@ -2,6 +2,18 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import { isSameSubnet } from '../../utils/ipMath';
 import type { Device } from '../../types/device';
 
+export function resolveHostname(hostname: string): string | null {
+  const state = useNetworkStore.getState();
+  const targetDevice = Object.values(state.devices).find(d => d.hostname.toLowerCase() === hostname.toLowerCase());
+  if (!targetDevice) return null;
+  
+  // Return the first active IPv4 address
+  for (const intf of Object.values(targetDevice.interfaces)) {
+    if (intf.isUp && intf.ipv4) return intf.ipv4.ip;
+  }
+  return null;
+}
+
 // --- ACL MATH ENGINE ---
 function matchesWildcard(ip: string, network: string, wildcard: string): boolean {
   if (network === '0.0.0.0' && wildcard === '255.255.255.255') return true; 
@@ -117,7 +129,10 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
   for (const route of sourceDevice.routingTable) {
     if (isSameSubnet(targetIp, route.network, route.mask)) {
       const nextHopDevice = Object.values(allDevices).find(d => Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp));
-      if (nextHopDevice) return simulatePing(nextHopDevice, targetIp, ttl - 1, srcIp);
+      if (nextHopDevice) {
+        const linkId = getLinkBetween(sourceDevice.id, nextHopDevice.id);
+        if (linkId) return simulatePing(nextHopDevice, targetIp, ttl - 1, srcIp);
+      }
     }
   }
   return false;
@@ -172,11 +187,12 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
       const nextHopDevice = Object.values(allDevices).find(d => Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp));
       if (nextHopDevice) {
         const linkId = getLinkBetween(sourceDevice.id, nextHopDevice.id);
+        if (!linkId) continue; // Physical link must exist
         const nextTrace = tracePath(nextHopDevice, targetIp, visited, srcIp);
         return {
           success: nextTrace.success,
           hops: [route.nextHopIp, ...nextTrace.hops],
-          links: linkId ? [linkId, ...nextTrace.links] : nextTrace.links
+          links: [linkId, ...nextTrace.links]
         };
       }
     }
@@ -186,11 +202,14 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
 }
 
 export async function animatePath(links: string[]) {
-  const setActiveLink = useNetworkStore.getState().setActiveLink;
+  const setActiveLinks = useNetworkStore.getState().setActiveLinks;
+  const currentPath: string[] = [];
   for (const linkId of links) {
     if (!linkId) continue;
-    setActiveLink(linkId);
-    await new Promise(resolve => setTimeout(resolve, 600)); 
+    currentPath.push(linkId);
+    setActiveLinks([...currentPath]);
+    await new Promise(resolve => setTimeout(resolve, 500)); 
   }
-  setActiveLink(null);
+  await new Promise(resolve => setTimeout(resolve, 1500)); 
+  setActiveLinks([]);
 }

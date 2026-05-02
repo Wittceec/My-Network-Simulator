@@ -1,7 +1,7 @@
 import { runOSPF } from '../logic/ospf';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import type { Device } from '../../types/device';
-import { simulatePing, tracePath, animatePath } from '../logic/ping';
+import { simulatePing, tracePath, animatePath, resolveHostname } from '../logic/ping';
 
 export function executePcCommand(rawInput: string, device: Device): string[] {
   const input = rawInput.trim();
@@ -14,43 +14,51 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
   const updateDevice = useNetworkStore.getState().updateDevice;
 
   if (cmd === 'ping') {
-    const targetIp = args[1];
+    let targetIp = args[1];
     if (!targetIp) {
       output.push('Usage: ping <ip_address>');
     } else {
-      output.push(`Pinging ${targetIp} with 32 bytes of data:`);
-      const success = simulatePing(device, targetIp);
-      if (success) {
-        // TRIGGER ANIMATION
-        const trace = tracePath(device, targetIp);
-        if (trace.success) animatePath(trace.links);
-
-        output.push(`Reply from ${targetIp}: bytes=32 time=1ms TTL=128`);
-        output.push(`Reply from ${targetIp}: bytes=32 time=1ms TTL=128`);
-        output.push(`Reply from ${targetIp}: bytes=32 time=1ms TTL=128`);
-        output.push(`Reply from ${targetIp}: bytes=32 time=1ms TTL=128`);
+      const resolved = targetIp.match(/[a-zA-Z]/) ? resolveHostname(targetIp) : targetIp;
+      if (!resolved) {
+        output.push(`Ping request could not find host ${targetIp}. Please check the name and try again.`);
       } else {
-        output.push('Request timed out.');
-        output.push('Request timed out.');
-        output.push('Request timed out.');
-        output.push('Request timed out.');
+        output.push(`Pinging ${resolved} with 32 bytes of data:`);
+        const success = simulatePing(device, resolved);
+        if (success) {
+          const trace = tracePath(device, resolved);
+          if (trace.success) animatePath(trace.links);
+
+          output.push(`Reply from ${resolved}: bytes=32 time=1ms TTL=128`);
+          output.push(`Reply from ${resolved}: bytes=32 time=1ms TTL=128`);
+          output.push(`Reply from ${resolved}: bytes=32 time=1ms TTL=128`);
+          output.push(`Reply from ${resolved}: bytes=32 time=1ms TTL=128`);
+        } else {
+          output.push('Request timed out.');
+          output.push('Request timed out.');
+          output.push('Request timed out.');
+          output.push('Request timed out.');
+        }
       }
     }
   } else if (cmd === 'tracert') {
-    const targetIp = args[1];
+    let targetIp = args[1];
     if (!targetIp) {
       output.push('Usage: tracert <ip_address>');
     } else {
-      output.push(`Tracing route to ${targetIp} over a maximum of 30 hops:\n`);
-      const traceResult = tracePath(device, targetIp);
-      
-      // TRIGGER ANIMATION
-      animatePath(traceResult.links);
+      const resolved = targetIp.match(/[a-zA-Z]/) ? resolveHostname(targetIp) : targetIp;
+      if (!resolved) {
+        output.push(`Unable to resolve target system name ${targetIp}.`);
+      } else {
+        output.push(`Tracing route to ${resolved} over a maximum of 30 hops:\n`);
+        const traceResult = tracePath(device, resolved);
+        
+        animatePath(traceResult.links);
 
-      traceResult.hops.forEach((hop, index) => {
-        output.push(`  ${index + 1}    <1 ms    <1 ms    <1 ms    ${hop}`);
-      });
-      output.push(traceResult.success ? '\nTrace complete.' : '\nTrace aborted.');
+        traceResult.hops.forEach((hop, index) => {
+          output.push(`  ${index + 1}    <1 ms    <1 ms    <1 ms    ${hop}`);
+        });
+        output.push(traceResult.success ? '\nTrace complete.' : '\nTrace aborted.');
+      }
     }
   } else if (cmd === 'ipconfig') {
     if (args[1] === 'dhcp') {
@@ -136,5 +144,5 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
     }, 50);
   }
 
-  return result;
+  return output;
 }

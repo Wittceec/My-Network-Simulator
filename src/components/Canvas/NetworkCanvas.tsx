@@ -18,11 +18,16 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import DeviceNode from './DeviceNode';
+import CustomLinkEdge from './CustomLinkEdge';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import type { DeviceType, Device } from '../../types/device';
 
 const nodeTypes = {
   networkDevice: DeviceNode,
+};
+
+const edgeTypes = {
+  customLink: CustomLinkEdge,
 };
 
 const initialNodes: Node[] = [];
@@ -56,6 +61,7 @@ export default function NetworkCanvas() {
     selectedItems.nodes.forEach((id) => removeDevice(id));
     selectedItems.edges.forEach((id) => removeLink(id));
     setSelectedItems({ nodes: [], edges: [] });
+    setTimeout(() => runOSPF(), 50); // Recalculate routes after deletion!
   };
 
   // NEW: Puts the canvas into "Connect Mode"
@@ -145,7 +151,7 @@ export default function NetworkCanvas() {
 
   const storeDevices = useNetworkStore((state) => state.devices);
   const storeLinks = useNetworkStore((state) => state.links);
-  const activeLink = useNetworkStore((state) => state.activeLink);
+  const activeLinks = useNetworkStore((state) => state.activeLinks);
 
   useEffect(() => {
     setNodes((currentNodes) => {
@@ -155,25 +161,30 @@ export default function NetworkCanvas() {
           id: dev.id,
           type: 'networkDevice',
           position: existingNode ? existingNode.position : { x: 100 + index * 150, y: 200 },
-          data: { label: dev.hostname, type: dev.type },
+          data: { id: dev.id, label: dev.hostname, type: dev.type },
         };
       });
     });
 
     setEdges(() => {
-      return Object.values(storeLinks).map((link) => ({
-        id: link.id,
-        source: link.sourceDeviceId,
-        target: link.targetDeviceId,
-        animated: activeLink === link.id,
-        style: {
-          stroke: activeLink === link.id ? '#7dd44a' : '#3a3a45',
-          strokeWidth: activeLink === link.id ? 3.5 : 1.75,
-          transition: 'all 0.2s ease',
-        },
-      }));
+      return Object.values(storeLinks).map((link) => {
+        const isActive = activeLinks.includes(link.id);
+        return {
+          id: link.id,
+          source: link.sourceDeviceId,
+          target: link.targetDeviceId,
+          type: 'customLink',
+          animated: isActive,
+          style: {
+            stroke: isActive ? '#4ade80' : 'rgba(255,255,255,0.2)', // green for ping
+            strokeWidth: isActive ? 4 : 2,
+            transition: 'all 0.2s ease',
+            filter: isActive ? 'drop-shadow(0 0 8px rgba(74, 222, 128, 0.8))' : 'none'
+          },
+        };
+      });
     });
-  }, [storeDevices, storeLinks, activeLink, setNodes, setEdges]);
+  }, [storeDevices, storeLinks, activeLinks, setNodes, setEdges]);
 
   return (
     <div style={{ flexGrow: 1, height: '100%', background: '#08080b', position: 'relative' }} ref={reactFlowWrapper}>
@@ -181,6 +192,7 @@ export default function NetworkCanvas() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodesDelete={onNodesDelete} 

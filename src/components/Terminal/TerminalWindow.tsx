@@ -15,6 +15,8 @@ const QUICK_KEYS_PC = ['ipconfig', 'ping ', 'arp -a', 'tracert ', 'cls'];
 
 export default function TerminalWindow({ deviceId, index }: Props) {
   const closeTerminal = useUIStore((state) => state.closeTerminal);
+  const activeTerminal = useUIStore((state) => state.activeTerminal);
+  const focusTerminal = useUIStore((state) => state.focusTerminal);
   const device = useNetworkStore((state) => state.devices[deviceId]);
 
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches;
@@ -62,6 +64,7 @@ export default function TerminalWindow({ deviceId, index }: Props) {
 
   if (!device) return null;
 
+  const isPoweredOn = device.powerOn ?? true;
   const isPC = device.type === 'pc';
 
   const promptStr = (() => {
@@ -71,7 +74,8 @@ export default function TerminalWindow({ deviceId, index }: Props) {
     if (mode === 'global') suffix = '(config)#';
     if (mode === 'interface') suffix = '(config-if)#';
     if (mode === 'dhcp') suffix = '(dhcp-config)#';
-    if (mode === 'router') suffix = '(config-router)#'; // NEW!
+    if (mode === 'router') suffix = '(config-router)#';
+    if (mode === 'line') suffix = '(config-line)#';
     return `${device.hostname}${suffix}`;
   })();
 
@@ -128,6 +132,9 @@ export default function TerminalWindow({ deviceId, index }: Props) {
       } else {
         setInput(prev => prev + '?');
       }
+    } else if (e.key === 'l' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      setHistory([]);
     }
   };
 
@@ -152,10 +159,10 @@ export default function TerminalWindow({ deviceId, index }: Props) {
 
   const positionStyle: React.CSSProperties = isMobile
     ? { left: 0, top: 0, right: 0, bottom: 0, width: '100%', height: '100%' }
-    : { left: `${position.x}px`, top: `${position.y}px`, width: `${size.w}px`, height: `${size.h}px` };
+    : { left: `${position.x}px`, top: `${position.y}px`, width: `${size.w}px`, height: `${size.h}px`, zIndex: activeTerminal === deviceId ? 1000 : 100 };
 
   return (
-    <div className="term" style={positionStyle}>
+    <div className="term" style={positionStyle} onMouseDownCapture={() => focusTerminal(deviceId)}>
       <div className="term-head" onMouseDown={handleMouseDown} style={{ cursor: isMobile ? 'default' : isDragging ? 'grabbing' : 'grab' }}>
         <div className="term-dots">
           <span
@@ -177,15 +184,25 @@ export default function TerminalWindow({ deviceId, index }: Props) {
       </div>
 
       <div className={`term-body ${isPC ? 'pc' : ''}`} onClick={() => inputRef.current?.focus()}>
-        {history.map((line, i) => <div key={i} className="term-line">{line}</div>)}
-        <div className="term-prompt-row" ref={endOfHistoryRef}>
-          <span className={promptCls}>{promptStr}</span>
-          <input
-            ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown} autoCapitalize="none" autoComplete="off" autoCorrect="off" spellCheck={false} autoFocus
-            className="term-input"
-          />
-        </div>
+        {!isPoweredOn ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-dim)', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔌</div>
+            <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Device is powered off</div>
+            <div style={{ fontSize: '12px', marginTop: '8px' }}>Press the power button on the canvas to turn it on.</div>
+          </div>
+        ) : (
+          <>
+            {history.map((line, i) => <div key={i} className="term-line">{line}</div>)}
+            <div className="term-prompt-row" ref={endOfHistoryRef}>
+              <span className={promptCls}>{promptStr}</span>
+              <input
+                ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown} autoCapitalize="none" autoComplete="off" autoCorrect="off" spellCheck={false} autoFocus
+                className="term-input"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {isMobile && (

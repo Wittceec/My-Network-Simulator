@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNetworkStore } from '../../store/useNetworkStore';
+import { useAzureStore } from '../../store/useAzureStore';
 import { Server, Monitor, HardDrive, Download, Upload, GripVertical } from 'lucide-react';
 
 const DEVICE_META = {
@@ -53,6 +54,11 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
       try {
         const data = JSON.parse(rawJson);
         loadLab(data.devices, data.links);
+        if (data.azureState) {
+          useAzureStore.getState().loadAzureState(data.azureState);
+        } else {
+          useAzureStore.getState().loadAzureState({});
+        }
       } catch {
         alert('Invalid Lab Format!');
       }
@@ -62,7 +68,16 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
 
   const handleExport = () => {
     const state = useNetworkStore.getState();
-    const labData = { devices: state.devices, links: state.links };
+    const azureState = useAzureStore.getState();
+    // Only include serializable data from Azure state (filter out functions)
+    const cleanAzureState = Object.keys(azureState).reduce((acc, key) => {
+      if (typeof (azureState as any)[key] !== 'function') {
+        acc[key] = (azureState as any)[key];
+      }
+      return acc;
+    }, {} as any);
+
+    const labData = { devices: state.devices, links: state.links, azureState: cleanAzureState };
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(labData, null, 2));
     const a = document.createElement('a');
     a.setAttribute('href', dataStr);

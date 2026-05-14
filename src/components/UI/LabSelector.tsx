@@ -24,10 +24,7 @@ export default function LabSelector({ onClose }: LabSelectorProps) {
       loadAzureState(azureState);
     } else {
       // clear azure state if not an azure lab
-      loadAzureState({
-        resourceGroups: {}, vnets: {}, vms: {}, nsgs: {}, routeTables: {}, vngs: {}, loadBalancers: {},
-        storageAccounts: {}, entraUsers: {}, roleAssignments: {}, dnsZones: {}, appServices: {}, keyVaults: {}, aksClusters: {}
-      });
+      loadAzureState({});
     }
 
     setTimeout(() => runOSPF(), 100);

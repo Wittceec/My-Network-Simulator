@@ -7,6 +7,7 @@ export interface PremadeLab {
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   devices: Record<string, Device>;
   links: Record<string, Link>;
+  azureState?: any; // To preload Azure resources
 }
 
 export const PREMADE_LABS: PremadeLab[] = [
@@ -176,6 +177,58 @@ export const PREMADE_LABS: PremadeLab[] = [
       'link-R2-R3': { id: 'link-R2-R3', shortName: 'link-R2-R3', mode: 'routed', accessVlan: 1, macAddress: '0000.0000.0000', sourceDeviceId: 'R2', targetDeviceId: 'R3', sourceInterfaceId: 'fastethernet0/1', targetInterfaceId: 'fastethernet0/1' },
       'link-R3-R4': { id: 'link-R3-R4', shortName: 'link-R3-R4', mode: 'routed', accessVlan: 1, macAddress: '0000.0000.0000', sourceDeviceId: 'R3', targetDeviceId: 'R4', sourceInterfaceId: 'fastethernet0/0', targetInterfaceId: 'fastethernet0/0' },
       'link-R4-R1': { id: 'link-R4-R1', shortName: 'link-R4-R1', mode: 'routed', accessVlan: 1, macAddress: '0000.0000.0000', sourceDeviceId: 'R4', targetDeviceId: 'R1', sourceInterfaceId: 'fastethernet0/1', targetInterfaceId: 'fastethernet0/1' }
+    }
+  },
+  {
+    id: 'az104-hub-spoke', shortName: 'az-hub-spoke', mode: 'routed', accessVlan: 1, macAddress: '0000.0000.0000',
+    name: 'AZ-104: Hub and Spoke Peering',
+    description: 'A classic Azure topology. You have an on-premises router connected via VPN to a Hub VNet. The Hub is peered with a Spoke VNet. Can you ping the Spoke VM? Check the Peering transit settings and Route Tables!',
+    difficulty: 'Intermediate',
+    devices: {
+      'OnPrem-Router': { id: 'OnPrem-Router', shortName: 'R1', mode: 'routed', accessVlan: 1, macAddress: '0000.0000.0000', hostname: 'OnPrem', type: 'router',
+        interfaces: {
+          'gigabitethernet0/0': { id: 'gigabitethernet0/0', shortName: 'gi0/0', mode: 'routed', accessVlan: 1, macAddress: '0000.0000.0000', isUp: true, ipv4: { ip: '192.168.1.1', mask: '255.255.255.0' } }
+        },
+        routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {}
+      }
+    },
+    links: {},
+    azureState: {
+      resourceGroups: {
+        'rg-networking': { name: 'rg-networking', location: 'eastus' }
+      },
+      vnets: {
+        'vnet-hub': {
+          id: 'vnet-hub', name: 'vnet-hub', type: 'Microsoft.Network/virtualNetworks', location: 'eastus', resourceGroup: 'rg-networking',
+          addressSpace: ['10.0.0.0/16'],
+          subnets: [{ id: 'GatewaySubnet', name: 'GatewaySubnet', addressPrefix: '10.0.0.0/24' }],
+          peerings: [{
+            id: 'peer-hub-to-spoke', name: 'peer-hub-to-spoke', remoteVirtualNetworkId: 'vnet-spoke',
+            allowVirtualNetworkAccess: true, allowForwardedTraffic: true, allowGatewayTransit: false, useRemoteGateways: false, peeringState: 'Connected'
+          }]
+        },
+        'vnet-spoke': {
+          id: 'vnet-spoke', name: 'vnet-spoke', type: 'Microsoft.Network/virtualNetworks', location: 'eastus', resourceGroup: 'rg-networking',
+          addressSpace: ['10.1.0.0/16'],
+          subnets: [{ id: 'sub-workload', name: 'sub-workload', addressPrefix: '10.1.1.0/24' }],
+          peerings: [{
+            id: 'peer-spoke-to-hub', name: 'peer-spoke-to-hub', remoteVirtualNetworkId: 'vnet-hub',
+            allowVirtualNetworkAccess: true, allowForwardedTraffic: true, allowGatewayTransit: false, useRemoteGateways: false, peeringState: 'Connected'
+          }]
+        }
+      },
+      vngs: {
+        'vng-hub': {
+          id: 'vng-hub', name: 'vng-hub', type: 'Microsoft.Network/virtualNetworkGateways', location: 'eastus', resourceGroup: 'rg-networking',
+          vnetId: 'vnet-hub', gatewayType: 'Vpn', vpnType: 'RouteBased', sku: 'VpnGw1', bgpEnabled: false, status: 'Succeeded', publicIpAddress: '20.50.100.1'
+        }
+      },
+      vms: {
+        'vm-spoke': {
+          id: 'vm-spoke', name: 'vm-spoke', type: 'Microsoft.Compute/virtualMachines', location: 'eastus', resourceGroup: 'rg-networking',
+          size: 'Standard_B2s', os: 'Linux', subnetId: 'sub-workload', privateIpAddress: '10.1.1.4', status: 'Running'
+        }
+      }
     }
   }
 ];

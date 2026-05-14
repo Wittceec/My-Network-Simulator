@@ -19,11 +19,18 @@ import '@xyflow/react/dist/style.css';
 
 import DeviceNode from './DeviceNode';
 import CustomLinkEdge from './CustomLinkEdge';
+import AzureVNetNode from './AzureVNetNode';
+import AzureVMNode from './AzureVMNode';
+import AzureVNGNode from './AzureVNGNode';
 import { useNetworkStore } from '../../store/useNetworkStore';
+import { useAzureStore } from '../../store/useAzureStore';
 import type { DeviceType, Device } from '../../types/device';
 
 const nodeTypes = {
   networkDevice: DeviceNode,
+  azureVNet: AzureVNetNode,
+  azureVM: AzureVMNode,
+  azureVNG: AzureVNGNode,
 };
 
 const edgeTypes = {
@@ -152,10 +159,11 @@ export default function NetworkCanvas() {
   const storeDevices = useNetworkStore((state) => state.devices);
   const storeLinks = useNetworkStore((state) => state.links);
   const activeLinks = useNetworkStore((state) => state.activeLinks);
+  const { vnets, vms, vngs } = useAzureStore();
 
   useEffect(() => {
     setNodes((currentNodes) => {
-      return Object.values(storeDevices).map((dev, index) => {
+      const regularNodes: Node[] = Object.values(storeDevices).map((dev, index) => {
         const existingNode = currentNodes.find(n => n.id === dev.id);
         return {
           id: dev.id,
@@ -164,6 +172,53 @@ export default function NetworkCanvas() {
           data: { id: dev.id, label: dev.hostname, type: dev.type },
         };
       });
+
+      const azureNodes: Node[] = [];
+      let vnetYOffset = 0;
+      Object.values(vnets).forEach((vnet, index) => {
+        const existingNode = currentNodes.find(n => n.id === vnet.id);
+        const vnetNodeId = vnet.id;
+        azureNodes.push({
+          id: vnetNodeId,
+          type: 'azureVNet',
+          position: existingNode ? existingNode.position : { x: 600, y: 100 + vnetYOffset },
+          data: { label: vnet.name, addressSpace: vnet.addressSpace[0] },
+          style: { width: 400, height: 300, zIndex: -1 },
+        });
+
+        const vnetVms = Object.values(vms).filter(vm => {
+          const subnet = vnet.subnets.find(s => s.id === vm.subnetId);
+          return !!subnet;
+        });
+
+        vnetVms.forEach((vm, vmIndex) => {
+          const existingVmNode = currentNodes.find(n => n.id === vm.id);
+          azureNodes.push({
+            id: vm.id,
+            type: 'azureVM',
+            position: existingVmNode ? existingVmNode.position : { x: 50, y: 50 + (vmIndex * 80) },
+            data: { label: vm.name, status: vm.status, os: vm.os },
+            parentId: vnetNodeId,
+            extent: 'parent',
+          });
+        });
+
+        const vnetVngs = Object.values(vngs).filter(vng => vng.vnetId === vnet.id);
+        vnetVngs.forEach((vng, vngIndex) => {
+          const existingVngNode = currentNodes.find(n => n.id === vng.id);
+          azureNodes.push({
+            id: vng.id,
+            type: 'azureVNG',
+            position: existingVngNode ? existingVngNode.position : { x: -75, y: 100 + (vngIndex * 100) },
+            data: { label: vng.name },
+            parentId: vnetNodeId,
+          });
+        });
+
+        vnetYOffset += 350;
+      });
+
+      return [...regularNodes, ...azureNodes];
     });
 
     setEdges(() => {
@@ -184,7 +239,7 @@ export default function NetworkCanvas() {
         };
       });
     });
-  }, [storeDevices, storeLinks, activeLinks, setNodes, setEdges]);
+  }, [storeDevices, storeLinks, activeLinks, vnets, vms, vngs, setNodes, setEdges]);
 
   return (
     <div style={{ flexGrow: 1, height: '100%', background: '#08080b', position: 'relative' }} ref={reactFlowWrapper}>

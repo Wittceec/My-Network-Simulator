@@ -1,4 +1,5 @@
 import { useNetworkStore } from '../../store/useNetworkStore';
+import { useAzureStore } from '../../store/useAzureStore';
 import { PREMADE_LABS, type PremadeLab } from '../../data/premadeLabs';
 import { runOSPF } from '../../core/logic/ospf';
 import { X, Play, BookOpen, Layers } from 'lucide-react';
@@ -9,12 +10,26 @@ interface LabSelectorProps {
 
 export default function LabSelector({ onClose }: LabSelectorProps) {
   const loadLab = useNetworkStore((state) => state.loadLab);
+  const loadAzureState = useAzureStore((state) => state.loadAzureState);
 
   const handleLoad = (lab: PremadeLab) => {
     // deep clone to avoid referencing the static data directly
     const devices = JSON.parse(JSON.stringify(lab.devices));
     const links = JSON.parse(JSON.stringify(lab.links));
     loadLab(devices, links);
+    
+    if (lab.azureState) {
+      // deep clone azure state
+      const azureState = JSON.parse(JSON.stringify(lab.azureState));
+      loadAzureState(azureState);
+    } else {
+      // clear azure state if not an azure lab
+      loadAzureState({
+        resourceGroups: {}, vnets: {}, vms: {}, nsgs: {}, routeTables: {}, vngs: {}, loadBalancers: {},
+        storageAccounts: {}, entraUsers: {}, roleAssignments: {}, dnsZones: {}, appServices: {}, keyVaults: {}, aksClusters: {}
+      });
+    }
+
     setTimeout(() => runOSPF(), 100);
     onClose();
   };
@@ -37,8 +52,8 @@ export default function LabSelector({ onClose }: LabSelectorProps) {
               <BookOpen size={24} />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Lab Library</h2>
-              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Select a scenario to practice</p>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Scenario Library</h2>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Select an AZ-104 or CCNA scenario to practice</p>
             </div>
           </div>
           <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={20} /></button>
@@ -77,6 +92,7 @@ export default function LabSelector({ onClose }: LabSelectorProps) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '12px', borderTop: '1px solid var(--border-accent)' }}>
                   <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Layers size={14} /> {Object.keys(lab.devices).length} Devices</span>
+                    {lab.azureState && <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#00a4ef' }}>Azure Enabled</span>}
                   </div>
                   <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={(e) => { e.stopPropagation(); handleLoad(lab); }}>
                     <Play size={14} /> Launch

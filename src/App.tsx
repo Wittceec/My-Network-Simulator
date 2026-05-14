@@ -1,11 +1,21 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import NetworkCanvas from './components/Canvas/NetworkCanvas';
 import Sidebar, { SidebarSheet } from './components/UI/Sidebar';
 import TerminalManager from './components/Terminal/TerminalManager';
 import LabSelector from './components/UI/LabSelector';
+import AzurePortal from './components/UI/AzurePortal';
 import { useNetworkStore } from './store/useNetworkStore';
-import { Menu, Plus, Hexagon, BookOpen } from 'lucide-react';
+import { Menu, Plus, Hexagon, BookOpen, Cloud } from 'lucide-react';
+
+class AppErrorBoundary extends React.Component<{children: any}, {error: any}> {
+  constructor(props: any) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error: any) { return { error }; }
+  render() { 
+    if (this.state.error) return <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999999, background: 'red', color: 'white', padding: 20}}><h1>App Crash</h1><pre>{this.state.error.message}</pre><pre>{this.state.error.stack}</pre></div>;
+    return this.props.children;
+  }
+}
 
 function useIsMobile() {
   const [m, setM] = useState(
@@ -23,9 +33,10 @@ function useIsMobile() {
 interface TopbarProps {
   onMenu: () => void;
   onOpenLibrary: () => void;
+  onOpenAzure: () => void;
 }
 
-function Topbar({ onMenu, onOpenLibrary }: TopbarProps) {
+function Topbar({ onMenu, onOpenLibrary, onOpenAzure }: TopbarProps) {
   const isMobile = useIsMobile();
   const deviceCount = useNetworkStore((s) => Object.keys(s.devices).length);
 
@@ -60,6 +71,9 @@ function Topbar({ onMenu, onOpenLibrary }: TopbarProps) {
           <button className="btn btn-ghost" onClick={onOpenLibrary} style={{ marginLeft: 16 }}>
             <BookOpen size={16} /> Library
           </button>
+          <button className="btn btn-ghost" onClick={onOpenAzure} style={{ marginLeft: 8, color: '#0078D4' }}>
+            <Cloud size={16} /> Azure Portal
+          </button>
         </>
       )}
       <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -76,6 +90,7 @@ function Topbar({ onMenu, onOpenLibrary }: TopbarProps) {
 function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [azureOpen, setAzureOpen] = useState(false);
 
   return (
     <div
@@ -89,7 +104,7 @@ function App() {
       }}
     >
       <ReactFlowProvider>
-        <Topbar onMenu={() => setSheetOpen(true)} onOpenLibrary={() => setLibraryOpen(true)} />
+        <Topbar onMenu={() => setSheetOpen(true)} onOpenLibrary={() => setLibraryOpen(true)} onOpenAzure={() => setAzureOpen(true)} />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
           <Sidebar />
           <NetworkCanvas />
@@ -97,6 +112,7 @@ function App() {
         </div>
         {sheetOpen && <SidebarSheet onClose={() => setSheetOpen(false)} />}
         {libraryOpen && <LabSelector onClose={() => setLibraryOpen(false)} />}
+        {azureOpen && <AppErrorBoundary><AzurePortal onClose={() => setAzureOpen(false)} /></AppErrorBoundary>}
       </ReactFlowProvider>
     </div>
   );

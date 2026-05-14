@@ -1,4 +1,5 @@
 import { useNetworkStore } from '../../store/useNetworkStore';
+import { useAzureStore } from '../../store/useAzureStore';
 import { isSameSubnet } from '../../utils/ipMath';
 import type { Device } from '../../types/device';
 
@@ -39,7 +40,95 @@ function isPermittedByAcl(device: Device, aclId: string | undefined, srcIp: stri
   }
   return false; 
 }
+
+// --- AZURE NSG MATH ENGINE ---
+function cidrToMask(bits: number): string {
+  let mask = '';
+  for (let i = 0; i < 4; i++) {
+    if (bits >= 8) {
+      mask += '255';
+      bits -= 8;
+    } else if (bits > 0) {
+      mask += (256 - Math.pow(2, 8 - bits)).toString();
+      bits = 0;
+    } else {
+      mask += '0';
+    }
+    if (i < 3) mask += '.';
+  }
+  return mask;
+}
+
+function isIpMatch(ip: string, prefix: string): boolean {
+  if (prefix === '*' || prefix === 'Internet' || prefix === 'VirtualNetwork') return true;
+  if (prefix.includes('/')) {
+    const [net, bits] = prefix.split('/');
+    const mask = cidrToMask(Number(bits));
+    return isSameSubnet(ip, net, mask);
+  }
+  return ip === prefix;
+}
+
+function isPermittedByAzureNsg(nsgId: string | undefined, srcIp: string, dstIp: string, protocol: 'Icmp' | 'Tcp' | 'Udp' | 'Any' = 'Icmp'): boolean {
+  if (!nsgId) return true; // Default allow if no NSG
+  const azureState = useAzureStore.getState();
+  const nsg = azureState.nsgs[nsgId];
+  if (!nsg) return true;
+
+  // In Azure, rules are sorted by priority (lowest number first)
+  const rules = [...nsg.rules].sort((a, b) => a.priority - b.priority);
+  
+  for (const rule of rules) {
+    if (rule.protocol !== 'Any' && rule.protocol !== protocol) continue;
+    if (rule.direction !== 'Inbound') continue;
+
+    const srcMatch = isIpMatch(srcIp, rule.sourceAddressPrefix);
+    const dstMatch = isIpMatch(dstIp, rule.destinationAddressPrefix);
+
+    if (srcMatch && dstMatch) {
+      return rule.access === 'Allow';
+    }
+  }
+
+  // Default Azure behavior: Deny all inbound from external, Allow VNet inbound.
+  // We'll simplify and say if no explicit rule matched, and src is from external (on-prem), Deny.
+  return false;
+}
 // ----------------------------
+
+function checkAzureRouting(azureState: any, entryVnetId: string, targetVm: any, srcIp: string, targetIp: string): { success: boolean, droppedByNsg: boolean } {
+  const entryVnet = azureState.vnets[entryVnetId];
+  if (!entryVnet) return { success: false, droppedByNsg: false };
+
+  let targetSubnet = entryVnet.subnets.find((s: any) => s.id === targetVm.subnetId);
+
+  // If not in entry VNet, check peerings for Gateway Transit
+  if (!targetSubnet) {
+    const validPeering = entryVnet.peerings.find((p: any) => {
+      const remoteVnet = azureState.vnets[p.remoteVirtualNetworkId];
+      if (!remoteVnet) return false;
+      const isTargetInRemote = remoteVnet.subnets.some((s: any) => s.id === targetVm.subnetId);
+      if (!isTargetInRemote) return false;
+      
+      const reversePeering = remoteVnet.peerings.find((rp: any) => rp.remoteVirtualNetworkId === entryVnet.id);
+      return p.allowGatewayTransit && reversePeering?.useRemoteGateways && p.peeringState === 'Connected' && reversePeering.peeringState === 'Connected';
+    });
+
+    if (validPeering) {
+      const remoteVnet = azureState.vnets[validPeering.remoteVirtualNetworkId];
+      targetSubnet = remoteVnet.subnets.find((s: any) => s.id === targetVm.subnetId);
+    }
+  }
+
+  if (targetSubnet) {
+    if (!isPermittedByAzureNsg(targetSubnet.nsgId, srcIp, targetIp, 'Icmp')) {
+      return { success: false, droppedByNsg: true };
+    }
+    return { success: true, droppedByNsg: false };
+  }
+
+  return { success: false, droppedByNsg: false };
+}
 
 function getLinkBetween(devAId: string, devBId: string): string | null {
   const links = Object.values(useNetworkStore.getState().links);
@@ -60,6 +149,10 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
   const isLocal = Object.values(sourceDevice.interfaces).some(intf => intf.ipv4?.ip === targetIp && intf.isUp);
   if (isLocal) return true;
 
+  // Check if target is an Azure VM in the same broadcast domain (not typical, but just in case)
+  const azureState = useAzureStore.getState();
+  const targetVm = Object.values(azureState.vms).find(vm => vm.privateIpAddress === targetIp && vm.status === 'Running');
+
   for (const srcIntf of Object.values(sourceDevice.interfaces)) {
     if (!srcIntf.isUp || !srcIntf.ipv4 || srcIntf.stpState === 'blocking') continue;
     if (!isPermittedByAcl(sourceDevice, srcIntf.outboundAclId, srcIp, targetIp)) continue;
@@ -73,6 +166,21 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
 
     for (const link of connectedLinks) {
       const neighborId = link.sourceDeviceId === sourceDevice.id ? link.targetDeviceId : link.sourceDeviceId;
+      
+      // Azure VNG Integration
+      if (neighborId.startsWith('azure-vng-')) {
+        const rawVngId = neighborId.replace('azure-vng-', '');
+        const vng = azureState.vngs[rawVngId];
+        if (vng && targetVm) {
+          // Simplistic routing: If it reaches the VNG, it reaches the VNet.
+          // Now supports VNet Peering via checkAzureRouting
+          const routingResult = checkAzureRouting(azureState, vng.vnetId, targetVm, srcIp, targetIp);
+          if (routingResult.droppedByNsg) return false;
+          if (routingResult.success) return true;
+        }
+        continue; // Drop if VNG but no VM found
+      }
+
       const neighborDevice = allDevices[neighborId];
       if (!neighborDevice) continue;
 
@@ -128,10 +236,51 @@ export function simulatePing(sourceDevice: Device, targetIp: string, ttl: number
 
   for (const route of sourceDevice.routingTable) {
     if (isSameSubnet(targetIp, route.network, route.mask)) {
-      const nextHopDevice = Object.values(allDevices).find(d => Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp));
-      if (nextHopDevice) {
-        const linkId = getLinkBetween(sourceDevice.id, nextHopDevice.id);
-        if (linkId) return simulatePing(nextHopDevice, targetIp, ttl - 1, srcIp);
+      let nextHopDevice: Device | undefined;
+      let nextHopLinkId: string | null = null;
+      let isAzureVng = false;
+      let rawVngId = '';
+
+      // Check if the next hop is actually a local interface name (e.g., 'fastethernet0/1')
+      const isLocalIntf = Object.keys(sourceDevice.interfaces).includes(route.nextHopIp);
+      
+      if (isLocalIntf) {
+        const physicalIntf = route.nextHopIp.split('.')[0];
+        const link = Object.values(allLinks).find(l => 
+          (l.sourceDeviceId === sourceDevice.id && l.sourceInterfaceId === physicalIntf) ||
+          (l.targetDeviceId === sourceDevice.id && l.targetInterfaceId === physicalIntf)
+        );
+        
+        if (link) {
+          nextHopLinkId = link.id;
+          const neighborId = link.sourceDeviceId === sourceDevice.id ? link.targetDeviceId : link.sourceDeviceId;
+          
+          if (neighborId.startsWith('azure-vng-')) {
+             isAzureVng = true;
+             rawVngId = neighborId.replace('azure-vng-', '');
+          } else {
+             nextHopDevice = allDevices[neighborId];
+          }
+        }
+      } else {
+        // Next hop is an IP address
+        nextHopDevice = Object.values(allDevices).find(d => Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp));
+        if (nextHopDevice) {
+           nextHopLinkId = getLinkBetween(sourceDevice.id, nextHopDevice.id);
+        }
+      }
+
+      if (isAzureVng) {
+        const azureState = useAzureStore.getState();
+        const vng = azureState.vngs[rawVngId];
+        const targetVm = Object.values(azureState.vms).find(vm => vm.privateIpAddress === targetIp && vm.status === 'Running');
+        if (vng && targetVm && targetVm.subnetId) {
+          const routingResult = checkAzureRouting(azureState, vng.vnetId, targetVm, srcIp, targetIp);
+          if (routingResult.droppedByNsg) return false;
+          if (routingResult.success) return true;
+        }
+      } else if (nextHopDevice && nextHopLinkId) {
+        return simulatePing(nextHopDevice, targetIp, ttl - 1, srcIp);
       }
     }
   }
@@ -164,6 +313,25 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
 
     for (const link of connectedLinks) {
       const neighborId = link.sourceDeviceId === sourceDevice.id ? link.targetDeviceId : link.sourceDeviceId;
+      
+      // Azure VNG Integration for TracePath
+      if (neighborId.startsWith('azure-vng-')) {
+        const rawVngId = neighborId.replace('azure-vng-', '');
+        const azureState = useAzureStore.getState();
+        const vng = azureState.vngs[rawVngId];
+        const targetVm = Object.values(azureState.vms).find(vm => vm.privateIpAddress === targetIp && vm.status === 'Running');
+        if (vng && targetVm) {
+          const routingResult = checkAzureRouting(azureState, vng.vnetId, targetVm, srcIp, targetIp);
+          if (routingResult.droppedByNsg) {
+             return { success: false, hops: [`${vng.publicIpAddress || 'VNG-Gateway'}`, '* (Administratively Prohibited by NSG)'], links: [link.id] };
+          }
+          if (routingResult.success) {
+             return { success: true, hops: [`${vng.publicIpAddress || 'VNG-Gateway'}`, targetIp], links: [link.id] };
+          }
+        }
+        continue;
+      }
+
       const neighborDevice = allDevices[neighborId];
       if (!neighborDevice) continue;
 
@@ -184,15 +352,54 @@ export function tracePath(sourceDevice: Device, targetIp: string, visited: Set<s
 
   for (const route of sourceDevice.routingTable) {
     if (isSameSubnet(targetIp, route.network, route.mask)) {
-      const nextHopDevice = Object.values(allDevices).find(d => Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp));
-      if (nextHopDevice) {
-        const linkId = getLinkBetween(sourceDevice.id, nextHopDevice.id);
-        if (!linkId) continue; // Physical link must exist
+      let nextHopDevice: Device | undefined;
+      let nextHopLinkId: string | null = null;
+      let isAzureVng = false;
+      let rawVngId = '';
+
+      const isLocalIntf = Object.keys(sourceDevice.interfaces).includes(route.nextHopIp);
+      if (isLocalIntf) {
+        const physicalIntf = route.nextHopIp.split('.')[0];
+        const link = Object.values(allLinks).find(l => 
+          (l.sourceDeviceId === sourceDevice.id && l.sourceInterfaceId === physicalIntf) ||
+          (l.targetDeviceId === sourceDevice.id && l.targetInterfaceId === physicalIntf)
+        );
+        if (link) {
+          nextHopLinkId = link.id;
+          const neighborId = link.sourceDeviceId === sourceDevice.id ? link.targetDeviceId : link.sourceDeviceId;
+          if (neighborId.startsWith('azure-vng-')) {
+             isAzureVng = true;
+             rawVngId = neighborId.replace('azure-vng-', '');
+          } else {
+             nextHopDevice = allDevices[neighborId];
+          }
+        }
+      } else {
+        nextHopDevice = Object.values(allDevices).find(d => Object.values(d.interfaces).some(i => i.ipv4?.ip === route.nextHopIp && i.isUp));
+        if (nextHopDevice) {
+           nextHopLinkId = getLinkBetween(sourceDevice.id, nextHopDevice.id);
+        }
+      }
+
+      if (isAzureVng && nextHopLinkId) {
+        const azureState = useAzureStore.getState();
+        const vng = azureState.vngs[rawVngId];
+        const targetVm = Object.values(azureState.vms).find(vm => vm.privateIpAddress === targetIp && vm.status === 'Running');
+        if (vng && targetVm && targetVm.subnetId) {
+          const routingResult = checkAzureRouting(azureState, vng.vnetId, targetVm, srcIp, targetIp);
+          if (routingResult.droppedByNsg) {
+             return { success: false, hops: [`${vng.publicIpAddress || 'VNG-Gateway'}`, '* (Administratively Prohibited by NSG)'], links: [nextHopLinkId] };
+          }
+          if (routingResult.success) {
+             return { success: true, hops: [`${vng.publicIpAddress || 'VNG-Gateway'}`, targetIp], links: [nextHopLinkId] };
+          }
+        }
+      } else if (nextHopDevice && nextHopLinkId) {
         const nextTrace = tracePath(nextHopDevice, targetIp, visited, srcIp);
         return {
           success: nextTrace.success,
-          hops: [route.nextHopIp, ...nextTrace.hops],
-          links: [linkId, ...nextTrace.links]
+          hops: [isLocalIntf ? nextHopDevice.interfaces['fastethernet0/0']?.ipv4?.ip || '?' : route.nextHopIp, ...nextTrace.hops],
+          links: [nextHopLinkId, ...nextTrace.links]
         };
       }
     }

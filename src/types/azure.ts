@@ -175,3 +175,21 @@ export interface RecoveryServicesVault extends AzureResource {
   sku: 'Standard' | 'RS0';
   storageRedundancy: 'LocallyRedundant' | 'GeoRedundant';
 }
+
+export interface SqlServer extends AzureResource {
+  type: 'Microsoft.Sql/servers';
+  adminLogin: string;
+}
+
+export interface SqlDatabase extends AzureResource {
+  type: 'Microsoft.Sql/servers/databases';
+  serverId: string; // ID of the parent SqlServer
+  sku: string; // e.g., Basic, Standard, Premium
+  maxSizeBytes: number;
+}
+
+export interface LogAnalyticsWorkspace extends AzureResource {
+  type: 'Microsoft.OperationalInsights/workspaces';
+  sku: 'PerGB2018' | 'Free' | 'Standard';
+  retentionInDays: number;
+}

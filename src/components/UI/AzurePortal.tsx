@@ -1,6 +1,6 @@
 import React, { useState, Component, ErrorInfo } from 'react';
 import { useAzureStore } from '../../store/useAzureStore';
-import { X, Plus, Server, Network, Folder, Shield, ArrowRight, LayoutDashboard, Search, Bell, Settings, UserCircle, Activity, TerminalSquare, Map, Scale, ArrowRightLeft, Database, Users, Globe, AppWindow, Key, Box, Layers, Archive } from 'lucide-react';
+import { X, Plus, Server, Network, Folder, Shield, ArrowRight, LayoutDashboard, Search, Bell, Settings, UserCircle, Activity, TerminalSquare, Map, Scale, ArrowRightLeft, Database, Users, Globe, AppWindow, Key, Box, Layers, Archive, Monitor } from 'lucide-react';
 import type { ResourceGroup, VNet, AzureRegion, VM } from '../../types/azure';
 import AzureVMWizard from './AzureVMWizard';
 import AzureVMDetails from './AzureVMDetails';
@@ -10,7 +10,7 @@ interface AzurePortalProps {
   onClose: () => void;
 }
 
-type Tab = 'home' | 'allResources' | 'costManagement' | 'resourceGroups' | 'vnets' | 'vms' | 'vngs' | 'nsgs' | 'routeTables' | 'loadBalancers' | 'peerings' | 'storageAccounts' | 'entraId' | 'dnsZones' | 'appServices' | 'keyVaults' | 'aksClusters' | 'vmss' | 'recoveryVaults';
+type Tab = 'home' | 'allResources' | 'costManagement' | 'resourceGroups' | 'vnets' | 'vms' | 'vngs' | 'nsgs' | 'routeTables' | 'loadBalancers' | 'peerings' | 'storageAccounts' | 'entraId' | 'dnsZones' | 'appServices' | 'keyVaults' | 'aksClusters' | 'vmss' | 'recoveryVaults' | 'sqlServers' | 'sqlDatabases' | 'logWorkspaces';
 
 class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
@@ -42,12 +42,15 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
   const [showCreateAks, setShowCreateAks] = useState(false);
   const [showCreateVmss, setShowCreateVmss] = useState(false);
   const [showCreateRv, setShowCreateRv] = useState(false);
+  const [showCreateSqlSrv, setShowCreateSqlSrv] = useState(false);
+  const [showCreateSqlDb, setShowCreateSqlDb] = useState(false);
+  const [showCreateLaw, setShowCreateLaw] = useState(false);
   const [showCreateVM, setShowCreateVM] = useState(false);
   const [selectedVM, setSelectedVM] = useState<VM | null>(null);
   const [isGlobalSidebarExpanded, setIsGlobalSidebarExpanded] = useState(false);
   const [showCloudShell, setShowCloudShell] = useState(false);
 
-  const { resourceGroups, vnets, vms, vngs, nsgs, routeTables, loadBalancers, storageAccounts, entraUsers, roleAssignments, dnsZones, appServices, keyVaults, aksClusters, vmss, recoveryVaults, createResourceGroup, createVNet, createVM, createVNG, createNSG, createRouteTable, createLoadBalancer, createStorageAccount, createEntraUser, createRoleAssignment, createDnsZone, createAppService, createKeyVault, createAksCluster, createVMSS, createRecoveryVault } = useAzureStore();
+  const { resourceGroups, vnets, vms, vngs, nsgs, routeTables, loadBalancers, storageAccounts, entraUsers, roleAssignments, dnsZones, appServices, keyVaults, aksClusters, vmss, recoveryVaults, sqlServers, sqlDatabases, logWorkspaces, createResourceGroup, createVNet, createVM, createVNG, createNSG, createRouteTable, createLoadBalancer, createStorageAccount, createEntraUser, createRoleAssignment, createDnsZone, createAppService, createKeyVault, createAksCluster, createVMSS, createRecoveryVault, createSqlServer, createSqlDatabase, createLogWorkspace } = useAzureStore();
 
   const allResources = [
     ...Object.values(resourceGroups).map(rg => ({ name: rg.name, type: 'Resource group', date: 'Just now' })),
@@ -64,7 +67,10 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
     ...Object.values(keyVaults).map(kv => ({ name: kv.name, type: 'Key vault', date: 'Just now' })),
     ...Object.values(aksClusters).map(aks => ({ name: aks.name, type: 'Kubernetes service', date: 'Just now' })),
     ...Object.values(vmss).map(v => ({ name: v.name, type: 'Virtual machine scale set', date: 'Just now' })),
-    ...Object.values(recoveryVaults).map(v => ({ name: v.name, type: 'Recovery Services vault', date: 'Just now' }))
+    ...Object.values(recoveryVaults).map(v => ({ name: v.name, type: 'Recovery Services vault', date: 'Just now' })),
+    ...Object.values(sqlServers).map(s => ({ name: s.name, type: 'SQL server', date: 'Just now' })),
+    ...Object.values(sqlDatabases).map(d => ({ name: d.name, type: 'SQL database', date: 'Just now' })),
+    ...Object.values(logWorkspaces).map(l => ({ name: l.name, type: 'Log Analytics workspace', date: 'Just now' }))
   ].sort((a, b) => a.name.localeCompare(b.name));
 
   const handleCreateRG = (e: React.FormEvent<HTMLFormElement>) => {
@@ -411,6 +417,51 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
     setShowCreateRv(false);
   };
 
+  const handleCreateSqlSrv = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createSqlServer({
+      id: `sql-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.Sql/servers',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      adminLogin: formData.get('adminLogin') as string
+    });
+    setShowCreateSqlSrv(false);
+  };
+
+  const handleCreateSqlDb = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createSqlDatabase({
+      id: `sqldb-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.Sql/servers/databases',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      serverId: formData.get('serverId') as string,
+      sku: formData.get('sku') as string,
+      maxSizeBytes: parseInt(formData.get('maxSizeGB') as string) * 1024 * 1024 * 1024
+    });
+    setShowCreateSqlDb(false);
+  };
+
+  const handleCreateLaw = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createLogWorkspace({
+      id: `law-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.OperationalInsights/workspaces',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      sku: formData.get('sku') as 'PerGB2018' | 'Free' | 'Standard',
+      retentionInDays: parseInt(formData.get('retentionInDays') as string)
+    });
+    setShowCreateLaw(false);
+  };
+
   return (
     <div className="azure-portal-overlay">
       <div className="azure-portal-window">
@@ -558,7 +609,7 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                   </div>
                 </>
               )}
-              {['resourceGroups', 'vnets', 'vms', 'vngs', 'nsgs', 'routeTables', 'loadBalancers', 'peerings', 'storageAccounts', 'dnsZones', 'appServices', 'keyVaults', 'aksClusters', 'vmss', 'recoveryVaults'].includes(activeTab) && (
+              {['resourceGroups', 'vnets', 'vms', 'vngs', 'nsgs', 'routeTables', 'loadBalancers', 'peerings', 'storageAccounts', 'dnsZones', 'appServices', 'keyVaults', 'aksClusters', 'vmss', 'recoveryVaults', 'sqlServers', 'sqlDatabases', 'logWorkspaces'].includes(activeTab) && (
                 <>
                   <div className="sidebar-header">Resource Manager</div>
                   <div className="nav-group">
@@ -575,6 +626,9 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                     <button className={`nav-item ${activeTab === 'aksClusters' ? 'active' : ''}`} onClick={() => setActiveTab('aksClusters')}><div className="icon-wrapper"><Box size={16} /></div> Kubernetes services</button>
                     <button className={`nav-item ${activeTab === 'vmss' ? 'active' : ''}`} onClick={() => setActiveTab('vmss')}><div className="icon-wrapper"><Layers size={16} /></div> Virtual machine scale sets</button>
                     <button className={`nav-item ${activeTab === 'recoveryVaults' ? 'active' : ''}`} onClick={() => setActiveTab('recoveryVaults')}><div className="icon-wrapper"><Archive size={16} /></div> Recovery Services vaults</button>
+                    <button className={`nav-item ${activeTab === 'sqlServers' ? 'active' : ''}`} onClick={() => setActiveTab('sqlServers')}><div className="icon-wrapper"><Server size={16} /></div> SQL servers</button>
+                    <button className={`nav-item ${activeTab === 'sqlDatabases' ? 'active' : ''}`} onClick={() => setActiveTab('sqlDatabases')}><div className="icon-wrapper"><Database size={16} /></div> SQL databases</button>
+                    <button className={`nav-item ${activeTab === 'logWorkspaces' ? 'active' : ''}`} onClick={() => setActiveTab('logWorkspaces')}><div className="icon-wrapper"><Monitor size={16} /></div> Log Analytics workspaces</button>
                     <button className={`nav-item ${activeTab === 'routeTables' ? 'active' : ''}`} onClick={() => setActiveTab('routeTables')}><div className="icon-wrapper"><Map size={16} /></div> Route tables</button>
                     <button className={`nav-item ${activeTab === 'loadBalancers' ? 'active' : ''}`} onClick={() => setActiveTab('loadBalancers')}><div className="icon-wrapper"><Scale size={16} /></div> Load balancers</button>
                     <button className={`nav-item ${activeTab === 'peerings' ? 'active' : ''}`} onClick={() => setActiveTab('peerings')}><div className="icon-wrapper"><ArrowRightLeft size={16} /></div> Peerings</button>
@@ -710,6 +764,9 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                             {res.type === 'Kubernetes service' && <Box size={16} />}
                             {res.type === 'Virtual machine scale set' && <Layers size={16} />}
                             {res.type === 'Recovery Services vault' && <Archive size={16} />}
+                            {res.type === 'SQL server' && <Server size={16} />}
+                            {res.type === 'SQL database' && <Database size={16} />}
+                            {res.type === 'Log Analytics workspace' && <Monitor size={16} />}
                             {res.name}
                           </td>
                           <td>{res.type}</td>
@@ -1384,6 +1441,128 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                           ))}
                           {Object.values(recoveryVaults).length === 0 && (
                             <tr><td colSpan={4} style={{ textAlign: 'center', color: '#666' }}>No Recovery Services vaults to display.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'sqlServers' && (
+                  <div>
+                    <div className="azure-content-header" style={{ paddingLeft: 0 }}>SQL servers</div>
+                    <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                      <button className="azure-btn-primary" onClick={() => setShowCreateSqlSrv(true)}><Plus size={14} /> Create</button>
+                    </div>
+                    {showCreateSqlSrv ? (
+                      <div className="azure-form-container" style={{ marginTop: 20 }}>
+                        <form onSubmit={handleCreateSqlSrv} className="azure-form">
+                          <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                          <div className="form-group"><label>Server name *</label><input type="text" name="name" required placeholder="e.g., mysqlserver" /></div>
+                          <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                          <div className="form-group"><label>Server admin login *</label><input type="text" name="adminLogin" required placeholder="azureadmin" /></div>
+
+                          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            <button type="submit" className="azure-btn-primary">Review + create</button>
+                            <button type="button" className="azure-btn-default" onClick={() => setShowCreateSqlSrv(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>Admin Login</th></tr></thead>
+                        <tbody>
+                          {Object.values(sqlServers).map(s => (
+                            <tr key={s.id}>
+                              <td className="resource-name"><Server size={16} /> {s.name}</td>
+                              <td>{s.resourceGroup}</td><td>{s.location}</td><td>{s.adminLogin}</td>
+                            </tr>
+                          ))}
+                          {Object.values(sqlServers).length === 0 && (
+                            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#666' }}>No SQL servers to display.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'sqlDatabases' && (
+                  <div>
+                    <div className="azure-content-header" style={{ paddingLeft: 0 }}>SQL databases</div>
+                    <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                      <button className="azure-btn-primary" onClick={() => setShowCreateSqlDb(true)}><Plus size={14} /> Create</button>
+                    </div>
+                    {showCreateSqlDb ? (
+                      <div className="azure-form-container" style={{ marginTop: 20 }}>
+                        <form onSubmit={handleCreateSqlDb} className="azure-form">
+                          <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                          <div className="form-group"><label>Database name *</label><input type="text" name="name" required placeholder="e.g., myDatabase" /></div>
+                          <div className="form-group"><label>Server *</label><select name="serverId" required><option value="">Select</option>{Object.values(sqlServers).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                          <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                          <div className="form-group"><label>Compute + storage (SKU) *</label><select name="sku"><option value="Standard">Standard</option><option value="Basic">Basic</option><option value="Premium">Premium</option></select></div>
+                          <div className="form-group"><label>Max size (GB) *</label><input type="number" name="maxSizeGB" defaultValue="250" /></div>
+
+                          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            <button type="submit" className="azure-btn-primary">Review + create</button>
+                            <button type="button" className="azure-btn-default" onClick={() => setShowCreateSqlDb(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>Server</th><th>SKU</th></tr></thead>
+                        <tbody>
+                          {Object.values(sqlDatabases).map(d => {
+                            const parentServer = sqlServers[d.serverId];
+                            return (
+                            <tr key={d.id}>
+                              <td className="resource-name"><Database size={16} /> {d.name}</td>
+                              <td>{d.resourceGroup}</td><td>{d.location}</td><td>{parentServer?.name || 'Unknown'}</td><td>{d.sku}</td>
+                            </tr>
+                          )})}
+                          {Object.values(sqlDatabases).length === 0 && (
+                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No SQL databases to display.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'logWorkspaces' && (
+                  <div>
+                    <div className="azure-content-header" style={{ paddingLeft: 0 }}>Log Analytics workspaces</div>
+                    <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                      <button className="azure-btn-primary" onClick={() => setShowCreateLaw(true)}><Plus size={14} /> Create</button>
+                    </div>
+                    {showCreateLaw ? (
+                      <div className="azure-form-container" style={{ marginTop: 20 }}>
+                        <form onSubmit={handleCreateLaw} className="azure-form">
+                          <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                          <div className="form-group"><label>Workspace name *</label><input type="text" name="name" required placeholder="e.g., myWorkspace" /></div>
+                          <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                          <div className="form-group"><label>Pricing tier *</label><select name="sku"><option value="PerGB2018">Pay-as-you-go (PerGB2018)</option><option value="Free">Free</option></select></div>
+                          <div className="form-group"><label>Retention (days) *</label><input type="number" name="retentionInDays" defaultValue="30" /></div>
+
+                          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            <button type="submit" className="azure-btn-primary">Review + create</button>
+                            <button type="button" className="azure-btn-default" onClick={() => setShowCreateLaw(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>Pricing tier</th><th>Retention</th></tr></thead>
+                        <tbody>
+                          {Object.values(logWorkspaces).map(l => (
+                            <tr key={l.id}>
+                              <td className="resource-name"><Monitor size={16} /> {l.name}</td>
+                              <td>{l.resourceGroup}</td><td>{l.location}</td><td>{l.sku}</td><td>{l.retentionInDays} days</td>
+                            </tr>
+                          ))}
+                          {Object.values(logWorkspaces).length === 0 && (
+                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No Log Analytics workspaces to display.</td></tr>
                           )}
                         </tbody>
                       </table>

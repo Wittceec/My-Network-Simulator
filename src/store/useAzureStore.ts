@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, RoleAssignment, DnsZone, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault } from '../types/azure';
+import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, RoleAssignment, DnsZone, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault, SqlServer, SqlDatabase, LogAnalyticsWorkspace } from '../types/azure';
 
 interface AzureState {
   resourceGroups: Record<string, ResourceGroup>;
@@ -18,6 +18,9 @@ interface AzureState {
   aksClusters: Record<string, KubernetesCluster>;
   vmss: Record<string, VMScaleSet>;
   recoveryVaults: Record<string, RecoveryServicesVault>;
+  sqlServers: Record<string, SqlServer>;
+  sqlDatabases: Record<string, SqlDatabase>;
+  logWorkspaces: Record<string, LogAnalyticsWorkspace>;
   
   createResourceGroup: (rg: ResourceGroup) => void;
   deleteResourceGroup: (name: string) => void;
@@ -69,6 +72,15 @@ interface AzureState {
   createRecoveryVault: (rv: RecoveryServicesVault) => void;
   deleteRecoveryVault: (id: string) => void;
 
+  createSqlServer: (sql: SqlServer) => void;
+  deleteSqlServer: (id: string) => void;
+
+  createSqlDatabase: (db: SqlDatabase) => void;
+  deleteSqlDatabase: (id: string) => void;
+
+  createLogWorkspace: (law: LogAnalyticsWorkspace) => void;
+  deleteLogWorkspace: (id: string) => void;
+
   loadAzureState: (state: Partial<AzureState>) => void;
 }
 
@@ -89,6 +101,9 @@ export const useAzureStore = create<AzureState>((set) => ({
   aksClusters: {},
   vmss: {},
   recoveryVaults: {},
+  sqlServers: {},
+  sqlDatabases: {},
+  logWorkspaces: {},
 
   createResourceGroup: (rg) => set((state) => ({ resourceGroups: { ...state.resourceGroups, [rg.name]: rg } })),
   deleteResourceGroup: (name) => set((state) => {
@@ -213,6 +228,27 @@ export const useAzureStore = create<AzureState>((set) => ({
     return { recoveryVaults: newRv };
   }),
 
+  createSqlServer: (sql) => set((state) => ({ sqlServers: { ...state.sqlServers, [sql.id]: sql } })),
+  deleteSqlServer: (id) => set((state) => {
+    const newSql = { ...state.sqlServers };
+    delete newSql[id];
+    return { sqlServers: newSql };
+  }),
+
+  createSqlDatabase: (db) => set((state) => ({ sqlDatabases: { ...state.sqlDatabases, [db.id]: db } })),
+  deleteSqlDatabase: (id) => set((state) => {
+    const newDb = { ...state.sqlDatabases };
+    delete newDb[id];
+    return { sqlDatabases: newDb };
+  }),
+
+  createLogWorkspace: (law) => set((state) => ({ logWorkspaces: { ...state.logWorkspaces, [law.id]: law } })),
+  deleteLogWorkspace: (id) => set((state) => {
+    const newLaw = { ...state.logWorkspaces };
+    delete newLaw[id];
+    return { logWorkspaces: newLaw };
+  }),
+
   loadAzureState: (newState) => set((state) => ({
     resourceGroups: newState.resourceGroups || {},
     vnets: newState.vnets || {},
@@ -229,6 +265,9 @@ export const useAzureStore = create<AzureState>((set) => ({
     keyVaults: newState.keyVaults || {},
     aksClusters: newState.aksClusters || {},
     vmss: newState.vmss || {},
-    recoveryVaults: newState.recoveryVaults || {}
+    recoveryVaults: newState.recoveryVaults || {},
+    sqlServers: newState.sqlServers || {},
+    sqlDatabases: newState.sqlDatabases || {},
+    logWorkspaces: newState.logWorkspaces || {}
   }))
 }));

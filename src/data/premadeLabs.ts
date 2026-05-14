@@ -230,5 +230,90 @@ export const PREMADE_LABS: PremadeLab[] = [
         }
       }
     }
+  },
+  {
+    id: 'az104-nsg-troubleshooting', shortName: 'az-nsg', mode: 'routed', accessVlan: 1, macAddress: '0000.0000.0000',
+    name: 'AZ-104: NSG Troubleshooting',
+    description: 'A Web Server VM is deployed in the frontend subnet, but users report they cannot access it. Check the Network Security Groups and their associated rules to identify the blocking rule!',
+    difficulty: 'Beginner',
+    devices: {},
+    links: {},
+    azureState: {
+      resourceGroups: { 'rg-security': { name: 'rg-security', location: 'westus' } },
+      vnets: {
+        'vnet-prod': {
+          id: 'vnet-prod', name: 'vnet-prod', type: 'Microsoft.Network/virtualNetworks', location: 'westus', resourceGroup: 'rg-security',
+          addressSpace: ['10.2.0.0/16'],
+          subnets: [{ id: 'sub-frontend', name: 'sub-frontend', addressPrefix: '10.2.1.0/24' }],
+          peerings: []
+        }
+      },
+      nsgs: {
+        'nsg-frontend': {
+          id: 'nsg-frontend', name: 'nsg-frontend', type: 'Microsoft.Network/networkSecurityGroups', location: 'westus', resourceGroup: 'rg-security',
+          rules: [
+            { name: 'Allow-SSH', priority: 100, direction: 'Inbound', access: 'Allow', protocol: 'Tcp', sourcePortRange: '*', destinationPortRange: '22', sourceAddressPrefix: '*', destinationAddressPrefix: '*' },
+            { name: 'Block-HTTP', priority: 110, direction: 'Inbound', access: 'Deny', protocol: 'Tcp', sourcePortRange: '*', destinationPortRange: '80', sourceAddressPrefix: '*', destinationAddressPrefix: '*' }
+          ]
+        }
+      },
+      vms: {
+        'vm-web': {
+          id: 'vm-web', name: 'vm-web', type: 'Microsoft.Compute/virtualMachines', location: 'westus', resourceGroup: 'rg-security',
+          size: 'Standard_B2s', os: 'Linux', subnetId: 'sub-frontend', privateIpAddress: '10.2.1.4', status: 'Running'
+        }
+      }
+    }
+  },
+  {
+    id: 'az104-firewall-routing', shortName: 'az-firewall', mode: 'routed', accessVlan: 1, macAddress: '0000.0000.0000',
+    name: 'AZ-104: Hub Firewall Routing',
+    description: 'All outbound traffic from the Spoke VNet must be inspected by the Azure Firewall in the Hub VNet. Review the Route Table attached to the Spoke subnet to verify the User Defined Route (UDR).',
+    difficulty: 'Advanced',
+    devices: {},
+    links: {},
+    azureState: {
+      resourceGroups: { 'rg-hub-spoke': { name: 'rg-hub-spoke', location: 'eastus' } },
+      vnets: {
+        'vnet-hub': {
+          id: 'vnet-hub', name: 'vnet-hub', type: 'Microsoft.Network/virtualNetworks', location: 'eastus', resourceGroup: 'rg-hub-spoke',
+          addressSpace: ['10.0.0.0/16'],
+          subnets: [{ id: 'AzureFirewallSubnet', name: 'AzureFirewallSubnet', addressPrefix: '10.0.1.0/26' }],
+          peerings: [{
+            id: 'peer-hub-to-spoke', name: 'peer-hub-to-spoke', remoteVirtualNetworkId: 'vnet-spoke',
+            allowVirtualNetworkAccess: true, allowForwardedTraffic: true, allowGatewayTransit: false, useRemoteGateways: false, peeringState: 'Connected'
+          }]
+        },
+        'vnet-spoke': {
+          id: 'vnet-spoke', name: 'vnet-spoke', type: 'Microsoft.Network/virtualNetworks', location: 'eastus', resourceGroup: 'rg-hub-spoke',
+          addressSpace: ['10.1.0.0/16'],
+          subnets: [{ id: 'sub-workload', name: 'sub-workload', addressPrefix: '10.1.1.0/24' }],
+          peerings: [{
+            id: 'peer-spoke-to-hub', name: 'peer-spoke-to-hub', remoteVirtualNetworkId: 'vnet-hub',
+            allowVirtualNetworkAccess: true, allowForwardedTraffic: true, allowGatewayTransit: false, useRemoteGateways: false, peeringState: 'Connected'
+          }]
+        }
+      },
+      firewalls: {
+        'fw-hub': {
+          id: 'fw-hub', name: 'fw-hub', type: 'Microsoft.Network/azureFirewalls', location: 'eastus', resourceGroup: 'rg-hub-spoke',
+          sku: 'Standard', threatIntelMode: 'Alert', vnetId: 'vnet-hub'
+        }
+      },
+      routeTables: {
+        'rt-spoke': {
+          id: 'rt-spoke', name: 'rt-spoke', type: 'Microsoft.Network/routeTables', location: 'eastus', resourceGroup: 'rg-hub-spoke',
+          routes: [
+            { name: 'To-Internet-Via-FW', addressPrefix: '0.0.0.0/0', nextHopType: 'VirtualAppliance', nextHopIpAddress: '10.0.1.4' }
+          ]
+        }
+      },
+      vms: {
+        'vm-spoke': {
+          id: 'vm-spoke', name: 'vm-spoke', type: 'Microsoft.Compute/virtualMachines', location: 'eastus', resourceGroup: 'rg-hub-spoke',
+          size: 'Standard_B2s', os: 'Windows', subnetId: 'sub-workload', privateIpAddress: '10.1.1.4', status: 'Running'
+        }
+      }
+    }
   }
 ];

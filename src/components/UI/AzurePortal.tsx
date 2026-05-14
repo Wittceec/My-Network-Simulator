@@ -1,6 +1,6 @@
 import React, { useState, Component, ErrorInfo } from 'react';
 import { useAzureStore } from '../../store/useAzureStore';
-import { X, Plus, Server, Network, Folder, Shield, ArrowRight, LayoutDashboard, Search, Bell, Settings, UserCircle, Activity, TerminalSquare, Map, Scale, ArrowRightLeft, Database, Users, Globe, AppWindow, Key, Box, Layers, Archive, Monitor } from 'lucide-react';
+import { X, Plus, Server, Network, Folder, Shield, ArrowRight, LayoutDashboard, Search, Bell, Settings, UserCircle, Activity, TerminalSquare, Map, Scale, ArrowRightLeft, Database, Users, Globe, AppWindow, Key, Box, Layers, Archive, Monitor, Flame, Split } from 'lucide-react';
 import type { ResourceGroup, VNet, AzureRegion, VM } from '../../types/azure';
 import AzureVMWizard from './AzureVMWizard';
 import AzureVMDetails from './AzureVMDetails';
@@ -10,7 +10,7 @@ interface AzurePortalProps {
   onClose: () => void;
 }
 
-type Tab = 'home' | 'allResources' | 'costManagement' | 'resourceGroups' | 'vnets' | 'vms' | 'vngs' | 'nsgs' | 'routeTables' | 'loadBalancers' | 'peerings' | 'storageAccounts' | 'entraId' | 'dnsZones' | 'appServices' | 'keyVaults' | 'aksClusters' | 'vmss' | 'recoveryVaults' | 'sqlServers' | 'sqlDatabases' | 'logWorkspaces';
+type Tab = 'home' | 'allResources' | 'costManagement' | 'resourceGroups' | 'vnets' | 'vms' | 'vngs' | 'nsgs' | 'routeTables' | 'loadBalancers' | 'peerings' | 'storageAccounts' | 'entraId' | 'dnsZones' | 'appServices' | 'keyVaults' | 'aksClusters' | 'vmss' | 'recoveryVaults' | 'sqlServers' | 'sqlDatabases' | 'logWorkspaces' | 'firewalls' | 'appGateways';
 
 class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
@@ -45,12 +45,14 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
   const [showCreateSqlSrv, setShowCreateSqlSrv] = useState(false);
   const [showCreateSqlDb, setShowCreateSqlDb] = useState(false);
   const [showCreateLaw, setShowCreateLaw] = useState(false);
+  const [showCreateFw, setShowCreateFw] = useState(false);
+  const [showCreateAgw, setShowCreateAgw] = useState(false);
   const [showCreateVM, setShowCreateVM] = useState(false);
   const [selectedVM, setSelectedVM] = useState<VM | null>(null);
   const [isGlobalSidebarExpanded, setIsGlobalSidebarExpanded] = useState(false);
   const [showCloudShell, setShowCloudShell] = useState(false);
 
-  const { resourceGroups, vnets, vms, vngs, nsgs, routeTables, loadBalancers, storageAccounts, entraUsers, roleAssignments, dnsZones, appServices, keyVaults, aksClusters, vmss, recoveryVaults, sqlServers, sqlDatabases, logWorkspaces, createResourceGroup, createVNet, createVM, createVNG, createNSG, createRouteTable, createLoadBalancer, createStorageAccount, createEntraUser, createRoleAssignment, createDnsZone, createAppService, createKeyVault, createAksCluster, createVMSS, createRecoveryVault, createSqlServer, createSqlDatabase, createLogWorkspace } = useAzureStore();
+  const { resourceGroups, vnets, vms, vngs, nsgs, routeTables, loadBalancers, storageAccounts, entraUsers, roleAssignments, dnsZones, appServices, keyVaults, aksClusters, vmss, recoveryVaults, sqlServers, sqlDatabases, logWorkspaces, firewalls, appGateways, createResourceGroup, createVNet, createVM, createVNG, createNSG, createRouteTable, createLoadBalancer, createStorageAccount, createEntraUser, createRoleAssignment, createDnsZone, createAppService, createKeyVault, createAksCluster, createVMSS, createRecoveryVault, createSqlServer, createSqlDatabase, createLogWorkspace, createFirewall, createAppGateway } = useAzureStore();
 
   const allResources = [
     ...Object.values(resourceGroups).map(rg => ({ name: rg.name, type: 'Resource group', date: 'Just now' })),
@@ -70,7 +72,9 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
     ...Object.values(recoveryVaults).map(v => ({ name: v.name, type: 'Recovery Services vault', date: 'Just now' })),
     ...Object.values(sqlServers).map(s => ({ name: s.name, type: 'SQL server', date: 'Just now' })),
     ...Object.values(sqlDatabases).map(d => ({ name: d.name, type: 'SQL database', date: 'Just now' })),
-    ...Object.values(logWorkspaces).map(l => ({ name: l.name, type: 'Log Analytics workspace', date: 'Just now' }))
+    ...Object.values(logWorkspaces).map(l => ({ name: l.name, type: 'Log Analytics workspace', date: 'Just now' })),
+    ...Object.values(firewalls).map(f => ({ name: f.name, type: 'Firewall', date: 'Just now' })),
+    ...Object.values(appGateways).map(a => ({ name: a.name, type: 'Application gateway', date: 'Just now' }))
   ].sort((a, b) => a.name.localeCompare(b.name));
 
   const handleCreateRG = (e: React.FormEvent<HTMLFormElement>) => {
@@ -462,6 +466,39 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
     setShowCreateLaw(false);
   };
 
+  const handleCreateFw = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createFirewall({
+      id: `fw-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.Network/azureFirewalls',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      sku: formData.get('sku') as 'Standard' | 'Premium' | 'Basic',
+      threatIntelMode: formData.get('threatIntelMode') as 'Alert' | 'Deny' | 'Off',
+      vnetId: formData.get('vnetId') as string
+    });
+    setShowCreateFw(false);
+  };
+
+  const handleCreateAgw = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createAppGateway({
+      id: `agw-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.Network/applicationGateways',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      sku: formData.get('sku') as 'Standard_v2' | 'WAF_v2',
+      tier: formData.get('sku') as 'Standard_v2' | 'WAF_v2', // tier usually matches sku for v2
+      capacity: parseInt(formData.get('capacity') as string),
+      vnetId: formData.get('vnetId') as string
+    });
+    setShowCreateAgw(false);
+  };
+
   return (
     <div className="azure-portal-overlay">
       <div className="azure-portal-window">
@@ -609,7 +646,7 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                   </div>
                 </>
               )}
-              {['resourceGroups', 'vnets', 'vms', 'vngs', 'nsgs', 'routeTables', 'loadBalancers', 'peerings', 'storageAccounts', 'dnsZones', 'appServices', 'keyVaults', 'aksClusters', 'vmss', 'recoveryVaults', 'sqlServers', 'sqlDatabases', 'logWorkspaces'].includes(activeTab) && (
+              {['resourceGroups', 'vnets', 'vms', 'vngs', 'nsgs', 'routeTables', 'loadBalancers', 'peerings', 'storageAccounts', 'dnsZones', 'appServices', 'keyVaults', 'aksClusters', 'vmss', 'recoveryVaults', 'sqlServers', 'sqlDatabases', 'logWorkspaces', 'firewalls', 'appGateways'].includes(activeTab) && (
                 <>
                   <div className="sidebar-header">Resource Manager</div>
                   <div className="nav-group">
@@ -630,6 +667,8 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                     <button className={`nav-item ${activeTab === 'sqlDatabases' ? 'active' : ''}`} onClick={() => setActiveTab('sqlDatabases')}><div className="icon-wrapper"><Database size={16} /></div> SQL databases</button>
                     <button className={`nav-item ${activeTab === 'logWorkspaces' ? 'active' : ''}`} onClick={() => setActiveTab('logWorkspaces')}><div className="icon-wrapper"><Monitor size={16} /></div> Log Analytics workspaces</button>
                     <button className={`nav-item ${activeTab === 'routeTables' ? 'active' : ''}`} onClick={() => setActiveTab('routeTables')}><div className="icon-wrapper"><Map size={16} /></div> Route tables</button>
+                    <button className={`nav-item ${activeTab === 'firewalls' ? 'active' : ''}`} onClick={() => setActiveTab('firewalls')}><div className="icon-wrapper"><Flame size={16} /></div> Firewalls</button>
+                    <button className={`nav-item ${activeTab === 'appGateways' ? 'active' : ''}`} onClick={() => setActiveTab('appGateways')}><div className="icon-wrapper"><Split size={16} /></div> Application gateways</button>
                     <button className={`nav-item ${activeTab === 'loadBalancers' ? 'active' : ''}`} onClick={() => setActiveTab('loadBalancers')}><div className="icon-wrapper"><Scale size={16} /></div> Load balancers</button>
                     <button className={`nav-item ${activeTab === 'peerings' ? 'active' : ''}`} onClick={() => setActiveTab('peerings')}><div className="icon-wrapper"><ArrowRightLeft size={16} /></div> Peerings</button>
                   </div>
@@ -767,6 +806,8 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                             {res.type === 'SQL server' && <Server size={16} />}
                             {res.type === 'SQL database' && <Database size={16} />}
                             {res.type === 'Log Analytics workspace' && <Monitor size={16} />}
+                            {res.type === 'Firewall' && <Flame size={16} />}
+                            {res.type === 'Application gateway' && <Split size={16} />}
                             {res.name}
                           </td>
                           <td>{res.type}</td>
@@ -1563,6 +1604,90 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                           ))}
                           {Object.values(logWorkspaces).length === 0 && (
                             <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No Log Analytics workspaces to display.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'firewalls' && (
+                  <div>
+                    <div className="azure-content-header" style={{ paddingLeft: 0 }}>Firewalls</div>
+                    <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                      <button className="azure-btn-primary" onClick={() => setShowCreateFw(true)}><Plus size={14} /> Create</button>
+                    </div>
+                    {showCreateFw ? (
+                      <div className="azure-form-container" style={{ marginTop: 20 }}>
+                        <form onSubmit={handleCreateFw} className="azure-form">
+                          <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                          <div className="form-group"><label>Firewall name *</label><input type="text" name="name" required placeholder="e.g., myFirewall" /></div>
+                          <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                          <div className="form-group"><label>Firewall SKU *</label><select name="sku"><option value="Standard">Standard</option><option value="Premium">Premium</option><option value="Basic">Basic</option></select></div>
+                          <div className="form-group"><label>Threat intelligence mode *</label><select name="threatIntelMode"><option value="Alert">Alert only</option><option value="Deny">Alert and deny</option><option value="Off">Off</option></select></div>
+                          <div className="form-group"><label>Virtual network *</label><select name="vnetId" required><option value="">Select</option>{Object.values(vnets).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></div>
+
+                          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            <button type="submit" className="azure-btn-primary">Review + create</button>
+                            <button type="button" className="azure-btn-default" onClick={() => setShowCreateFw(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>SKU</th><th>Virtual network</th></tr></thead>
+                        <tbody>
+                          {Object.values(firewalls).map(f => {
+                            const parentVnet = vnets[f.vnetId];
+                            return (
+                            <tr key={f.id}>
+                              <td className="resource-name"><Flame size={16} /> {f.name}</td>
+                              <td>{f.resourceGroup}</td><td>{f.location}</td><td>{f.sku}</td><td>{parentVnet?.name || 'Unknown'}</td>
+                            </tr>
+                          )})}
+                          {Object.values(firewalls).length === 0 && (
+                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No Firewalls to display.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'appGateways' && (
+                  <div>
+                    <div className="azure-content-header" style={{ paddingLeft: 0 }}>Application gateways</div>
+                    <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                      <button className="azure-btn-primary" onClick={() => setShowCreateAgw(true)}><Plus size={14} /> Create</button>
+                    </div>
+                    {showCreateAgw ? (
+                      <div className="azure-form-container" style={{ marginTop: 20 }}>
+                        <form onSubmit={handleCreateAgw} className="azure-form">
+                          <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                          <div className="form-group"><label>Application gateway name *</label><input type="text" name="name" required placeholder="e.g., myAppGateway" /></div>
+                          <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                          <div className="form-group"><label>Tier *</label><select name="sku"><option value="Standard_v2">Standard V2</option><option value="WAF_v2">WAF V2</option></select></div>
+                          <div className="form-group"><label>Instance count *</label><input type="number" name="capacity" defaultValue="2" /></div>
+                          <div className="form-group"><label>Virtual network *</label><select name="vnetId" required><option value="">Select</option>{Object.values(vnets).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></div>
+
+                          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            <button type="submit" className="azure-btn-primary">Review + create</button>
+                            <button type="button" className="azure-btn-default" onClick={() => setShowCreateAgw(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>Tier</th><th>Instances</th></tr></thead>
+                        <tbody>
+                          {Object.values(appGateways).map(a => (
+                            <tr key={a.id}>
+                              <td className="resource-name"><Split size={16} /> {a.name}</td>
+                              <td>{a.resourceGroup}</td><td>{a.location}</td><td>{a.tier}</td><td>{a.capacity}</td>
+                            </tr>
+                          ))}
+                          {Object.values(appGateways).length === 0 && (
+                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No Application gateways to display.</td></tr>
                           )}
                         </tbody>
                       </table>

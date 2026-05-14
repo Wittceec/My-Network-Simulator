@@ -193,3 +193,18 @@ export interface LogAnalyticsWorkspace extends AzureResource {
   sku: 'PerGB2018' | 'Free' | 'Standard';
   retentionInDays: number;
 }
+
+export interface AzureFirewall extends AzureResource {
+  type: 'Microsoft.Network/azureFirewalls';
+  sku: 'Standard' | 'Premium' | 'Basic';
+  threatIntelMode: 'Alert' | 'Deny' | 'Off';
+  vnetId: string;
+}
+
+export interface ApplicationGateway extends AzureResource {
+  type: 'Microsoft.Network/applicationGateways';
+  sku: 'Standard_v2' | 'WAF_v2';
+  tier: 'Standard_v2' | 'WAF_v2';
+  capacity: number;
+  vnetId: string;
+}

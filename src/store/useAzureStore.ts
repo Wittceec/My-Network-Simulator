@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, RoleAssignment, DnsZone, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault, SqlServer, SqlDatabase, LogAnalyticsWorkspace } from '../types/azure';
+import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, RoleAssignment, DnsZone, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault, SqlServer, SqlDatabase, LogAnalyticsWorkspace, AzureFirewall, ApplicationGateway } from '../types/azure';
 
 interface AzureState {
   resourceGroups: Record<string, ResourceGroup>;
@@ -21,6 +21,8 @@ interface AzureState {
   sqlServers: Record<string, SqlServer>;
   sqlDatabases: Record<string, SqlDatabase>;
   logWorkspaces: Record<string, LogAnalyticsWorkspace>;
+  firewalls: Record<string, AzureFirewall>;
+  appGateways: Record<string, ApplicationGateway>;
   
   createResourceGroup: (rg: ResourceGroup) => void;
   deleteResourceGroup: (name: string) => void;
@@ -81,6 +83,12 @@ interface AzureState {
   createLogWorkspace: (law: LogAnalyticsWorkspace) => void;
   deleteLogWorkspace: (id: string) => void;
 
+  createFirewall: (fw: AzureFirewall) => void;
+  deleteFirewall: (id: string) => void;
+
+  createAppGateway: (agw: ApplicationGateway) => void;
+  deleteAppGateway: (id: string) => void;
+
   loadAzureState: (state: Partial<AzureState>) => void;
 }
 
@@ -104,6 +112,8 @@ export const useAzureStore = create<AzureState>((set) => ({
   sqlServers: {},
   sqlDatabases: {},
   logWorkspaces: {},
+  firewalls: {},
+  appGateways: {},
 
   createResourceGroup: (rg) => set((state) => ({ resourceGroups: { ...state.resourceGroups, [rg.name]: rg } })),
   deleteResourceGroup: (name) => set((state) => {
@@ -249,6 +259,20 @@ export const useAzureStore = create<AzureState>((set) => ({
     return { logWorkspaces: newLaw };
   }),
 
+  createFirewall: (fw) => set((state) => ({ firewalls: { ...state.firewalls, [fw.id]: fw } })),
+  deleteFirewall: (id) => set((state) => {
+    const newFw = { ...state.firewalls };
+    delete newFw[id];
+    return { firewalls: newFw };
+  }),
+
+  createAppGateway: (agw) => set((state) => ({ appGateways: { ...state.appGateways, [agw.id]: agw } })),
+  deleteAppGateway: (id) => set((state) => {
+    const newAgw = { ...state.appGateways };
+    delete newAgw[id];
+    return { appGateways: newAgw };
+  }),
+
   loadAzureState: (newState) => set((state) => ({
     resourceGroups: newState.resourceGroups || {},
     vnets: newState.vnets || {},
@@ -268,6 +292,8 @@ export const useAzureStore = create<AzureState>((set) => ({
     recoveryVaults: newState.recoveryVaults || {},
     sqlServers: newState.sqlServers || {},
     sqlDatabases: newState.sqlDatabases || {},
-    logWorkspaces: newState.logWorkspaces || {}
+    logWorkspaces: newState.logWorkspaces || {},
+    firewalls: newState.firewalls || {},
+    appGateways: newState.appGateways || {}
   }))
 }));

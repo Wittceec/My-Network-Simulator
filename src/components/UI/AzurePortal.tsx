@@ -1,6 +1,6 @@
 import React, { useState, Component, ErrorInfo } from 'react';
 import { useAzureStore } from '../../store/useAzureStore';
-import { X, Plus, Server, Network, Folder, Shield, ArrowRight, LayoutDashboard, Search, Bell, Settings, UserCircle, Activity, TerminalSquare, Map, Scale, ArrowRightLeft, Database, Users, Globe, AppWindow, Key, Box, Layers, Archive, Monitor, Flame, Split } from 'lucide-react';
+import { X, Plus, Server, Network, Folder, Shield, ArrowRight, LayoutDashboard, Search, Bell, Settings, UserCircle, Activity, TerminalSquare, Map, Scale, ArrowRightLeft, Database, Users, Globe, AppWindow, Key, Box, Layers, Archive, Monitor, Flame, Split, Plug, ShieldCheck } from 'lucide-react';
 import type { ResourceGroup, VNet, AzureRegion, VM } from '../../types/azure';
 import AzureVMWizard from './AzureVMWizard';
 import AzureVMDetails from './AzureVMDetails';
@@ -10,7 +10,7 @@ interface AzurePortalProps {
   onClose: () => void;
 }
 
-type Tab = 'home' | 'allResources' | 'costManagement' | 'resourceGroups' | 'vnets' | 'vms' | 'vngs' | 'nsgs' | 'routeTables' | 'loadBalancers' | 'peerings' | 'storageAccounts' | 'entraId' | 'dnsZones' | 'appServices' | 'keyVaults' | 'aksClusters' | 'vmss' | 'recoveryVaults' | 'sqlServers' | 'sqlDatabases' | 'logWorkspaces' | 'firewalls' | 'appGateways';
+type Tab = 'home' | 'allResources' | 'costManagement' | 'resourceGroups' | 'vnets' | 'vms' | 'vngs' | 'nsgs' | 'routeTables' | 'loadBalancers' | 'peerings' | 'storageAccounts' | 'entraId' | 'dnsZones' | 'appServices' | 'keyVaults' | 'aksClusters' | 'vmss' | 'recoveryVaults' | 'sqlServers' | 'sqlDatabases' | 'logWorkspaces' | 'firewalls' | 'appGateways' | 'publicIps' | 'nics' | 'bastions';
 
 class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
@@ -47,12 +47,15 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
   const [showCreateLaw, setShowCreateLaw] = useState(false);
   const [showCreateFw, setShowCreateFw] = useState(false);
   const [showCreateAgw, setShowCreateAgw] = useState(false);
+  const [showCreatePip, setShowCreatePip] = useState(false);
+  const [showCreateNic, setShowCreateNic] = useState(false);
+  const [showCreateBastion, setShowCreateBastion] = useState(false);
   const [showCreateVM, setShowCreateVM] = useState(false);
   const [selectedVM, setSelectedVM] = useState<VM | null>(null);
   const [isGlobalSidebarExpanded, setIsGlobalSidebarExpanded] = useState(false);
   const [showCloudShell, setShowCloudShell] = useState(false);
 
-  const { resourceGroups, vnets, vms, vngs, nsgs, routeTables, loadBalancers, storageAccounts, entraUsers, roleAssignments, dnsZones, appServices, keyVaults, aksClusters, vmss, recoveryVaults, sqlServers, sqlDatabases, logWorkspaces, firewalls, appGateways, createResourceGroup, createVNet, createVM, createVNG, createNSG, createRouteTable, createLoadBalancer, createStorageAccount, createEntraUser, createRoleAssignment, createDnsZone, createAppService, createKeyVault, createAksCluster, createVMSS, createRecoveryVault, createSqlServer, createSqlDatabase, createLogWorkspace, createFirewall, createAppGateway } = useAzureStore();
+  const { resourceGroups, vnets, vms, vngs, nsgs, routeTables, loadBalancers, storageAccounts, entraUsers, roleAssignments, dnsZones, appServices, keyVaults, aksClusters, vmss, recoveryVaults, sqlServers, sqlDatabases, logWorkspaces, firewalls, appGateways, publicIps, nics, bastions, createResourceGroup, createVNet, createVM, createVNG, createNSG, createRouteTable, createLoadBalancer, createStorageAccount, createEntraUser, createRoleAssignment, createDnsZone, createAppService, createKeyVault, createAksCluster, createVMSS, createRecoveryVault, createSqlServer, createSqlDatabase, createLogWorkspace, createFirewall, createAppGateway, createPublicIp, createNic, createBastion } = useAzureStore();
 
   const allResources = [
     ...Object.values(resourceGroups).map(rg => ({ name: rg.name, type: 'Resource group', date: 'Just now' })),
@@ -74,7 +77,10 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
     ...Object.values(sqlDatabases).map(d => ({ name: d.name, type: 'SQL database', date: 'Just now' })),
     ...Object.values(logWorkspaces).map(l => ({ name: l.name, type: 'Log Analytics workspace', date: 'Just now' })),
     ...Object.values(firewalls).map(f => ({ name: f.name, type: 'Firewall', date: 'Just now' })),
-    ...Object.values(appGateways).map(a => ({ name: a.name, type: 'Application gateway', date: 'Just now' }))
+    ...Object.values(appGateways).map(a => ({ name: a.name, type: 'Application gateway', date: 'Just now' })),
+    ...Object.values(publicIps).map(p => ({ name: p.name, type: 'Public IP address', date: 'Just now' })),
+    ...Object.values(nics).map(n => ({ name: n.name, type: 'Network interface', date: 'Just now' })),
+    ...Object.values(bastions).map(b => ({ name: b.name, type: 'Bastion', date: 'Just now' }))
   ].sort((a, b) => a.name.localeCompare(b.name));
 
   const handleCreateRG = (e: React.FormEvent<HTMLFormElement>) => {
@@ -499,6 +505,55 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
     setShowCreateAgw(false);
   };
 
+  const handleCreatePip = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createPublicIp({
+      id: `pip-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.Network/publicIPAddresses',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      sku: formData.get('sku') as 'Basic' | 'Standard',
+      allocationMethod: formData.get('allocationMethod') as 'Static' | 'Dynamic',
+      ipAddress: formData.get('allocationMethod') === 'Static' ? `20.114.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` : undefined
+    });
+    setShowCreatePip(false);
+  };
+
+  const handleCreateNic = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createNic({
+      id: `nic-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.Network/networkInterfaces',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      subnetId: formData.get('subnetId') as string,
+      privateIpAddress: `10.0.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`, // Simulated IP
+      publicIpAddressId: formData.get('publicIpAddressId') as string,
+      nsgId: formData.get('nsgId') as string
+    });
+    setShowCreateNic(false);
+  };
+
+  const handleCreateBastion = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createBastion({
+      id: `bastion-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.Network/bastionHosts',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      vnetId: formData.get('vnetId') as string,
+      publicIpAddressId: formData.get('publicIpAddressId') as string,
+      sku: formData.get('sku') as 'Basic' | 'Standard'
+    });
+    setShowCreateBastion(false);
+  };
+
   return (
     <div className="azure-portal-overlay">
       <div className="azure-portal-window">
@@ -646,7 +701,7 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                   </div>
                 </>
               )}
-              {['resourceGroups', 'vnets', 'vms', 'vngs', 'nsgs', 'routeTables', 'loadBalancers', 'peerings', 'storageAccounts', 'dnsZones', 'appServices', 'keyVaults', 'aksClusters', 'vmss', 'recoveryVaults', 'sqlServers', 'sqlDatabases', 'logWorkspaces', 'firewalls', 'appGateways'].includes(activeTab) && (
+              {['resourceGroups', 'vnets', 'vms', 'vngs', 'nsgs', 'routeTables', 'loadBalancers', 'peerings', 'storageAccounts', 'dnsZones', 'appServices', 'keyVaults', 'aksClusters', 'vmss', 'recoveryVaults', 'sqlServers', 'sqlDatabases', 'logWorkspaces', 'firewalls', 'appGateways', 'publicIps', 'nics', 'bastions'].includes(activeTab) && (
                 <>
                   <div className="sidebar-header">Resource Manager</div>
                   <div className="nav-group">
@@ -671,6 +726,9 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                     <button className={`nav-item ${activeTab === 'appGateways' ? 'active' : ''}`} onClick={() => setActiveTab('appGateways')}><div className="icon-wrapper"><Split size={16} /></div> Application gateways</button>
                     <button className={`nav-item ${activeTab === 'loadBalancers' ? 'active' : ''}`} onClick={() => setActiveTab('loadBalancers')}><div className="icon-wrapper"><Scale size={16} /></div> Load balancers</button>
                     <button className={`nav-item ${activeTab === 'peerings' ? 'active' : ''}`} onClick={() => setActiveTab('peerings')}><div className="icon-wrapper"><ArrowRightLeft size={16} /></div> Peerings</button>
+                    <button className={`nav-item ${activeTab === 'publicIps' ? 'active' : ''}`} onClick={() => setActiveTab('publicIps')}><div className="icon-wrapper"><Globe size={16} /></div> Public IP addresses</button>
+                    <button className={`nav-item ${activeTab === 'nics' ? 'active' : ''}`} onClick={() => setActiveTab('nics')}><div className="icon-wrapper"><Plug size={16} /></div> Network interfaces</button>
+                    <button className={`nav-item ${activeTab === 'bastions' ? 'active' : ''}`} onClick={() => setActiveTab('bastions')}><div className="icon-wrapper"><ShieldCheck size={16} /></div> Bastions</button>
                   </div>
                 </>
               )}
@@ -808,6 +866,9 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                             {res.type === 'Log Analytics workspace' && <Monitor size={16} />}
                             {res.type === 'Firewall' && <Flame size={16} />}
                             {res.type === 'Application gateway' && <Split size={16} />}
+                            {res.type === 'Public IP address' && <Globe size={16} />}
+                            {res.type === 'Network interface' && <Plug size={16} />}
+                            {res.type === 'Bastion' && <ShieldCheck size={16} />}
                             {res.name}
                           </td>
                           <td>{res.type}</td>
@@ -1688,6 +1749,132 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                           ))}
                           {Object.values(appGateways).length === 0 && (
                             <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No Application gateways to display.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'publicIps' && (
+                  <div>
+                    <div className="azure-content-header" style={{ paddingLeft: 0 }}>Public IP addresses</div>
+                    <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                      <button className="azure-btn-primary" onClick={() => setShowCreatePip(true)}><Plus size={14} /> Create</button>
+                    </div>
+                    {showCreatePip ? (
+                      <div className="azure-form-container" style={{ marginTop: 20 }}>
+                        <form onSubmit={handleCreatePip} className="azure-form">
+                          <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                          <div className="form-group"><label>Name *</label><input type="text" name="name" required placeholder="e.g., pip-web-01" /></div>
+                          <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                          <div className="form-group"><label>SKU *</label><select name="sku"><option value="Standard">Standard</option><option value="Basic">Basic</option></select></div>
+                          <div className="form-group"><label>Allocation method *</label><select name="allocationMethod"><option value="Static">Static</option><option value="Dynamic">Dynamic</option></select></div>
+
+                          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            <button type="submit" className="azure-btn-primary">Review + create</button>
+                            <button type="button" className="azure-btn-default" onClick={() => setShowCreatePip(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>IP address</th><th>SKU</th></tr></thead>
+                        <tbody>
+                          {Object.values(publicIps).map(p => (
+                            <tr key={p.id}>
+                              <td className="resource-name"><Globe size={16} /> {p.name}</td>
+                              <td>{p.resourceGroup}</td><td>{p.location}</td><td>{p.ipAddress || '--'}</td><td>{p.sku}</td>
+                            </tr>
+                          ))}
+                          {Object.values(publicIps).length === 0 && (
+                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No Public IPs to display.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'nics' && (
+                  <div>
+                    <div className="azure-content-header" style={{ paddingLeft: 0 }}>Network interfaces</div>
+                    <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                      <button className="azure-btn-primary" onClick={() => setShowCreateNic(true)}><Plus size={14} /> Create</button>
+                    </div>
+                    {showCreateNic ? (
+                      <div className="azure-form-container" style={{ marginTop: 20 }}>
+                        <form onSubmit={handleCreateNic} className="azure-form">
+                          <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                          <div className="form-group"><label>Name *</label><input type="text" name="name" required placeholder="e.g., nic-web-01" /></div>
+                          <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                          <div className="form-group"><label>Subnet *</label><select name="subnetId" required><option value="">Select</option>{Object.values(vnets).flatMap(v => v.subnets.map(s => <option key={s.id} value={s.id}>{v.name} / {s.name}</option>))}</select></div>
+                          <div className="form-group"><label>Public IP address (Optional)</label><select name="publicIpAddressId"><option value="">None</option>{Object.values(publicIps).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                          <div className="form-group"><label>Network security group (Optional)</label><select name="nsgId"><option value="">None</option>{Object.values(nsgs).map(n => <option key={n.id} value={n.id}>{n.name}</option>)}</select></div>
+
+                          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            <button type="submit" className="azure-btn-primary">Review + create</button>
+                            <button type="button" className="azure-btn-default" onClick={() => setShowCreateNic(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>Private IP</th><th>Public IP</th></tr></thead>
+                        <tbody>
+                          {Object.values(nics).map(n => {
+                            const pip = n.publicIpAddressId ? publicIps[n.publicIpAddressId]?.ipAddress : '--';
+                            return (
+                            <tr key={n.id}>
+                              <td className="resource-name"><Plug size={16} /> {n.name}</td>
+                              <td>{n.resourceGroup}</td><td>{n.location}</td><td>{n.privateIpAddress}</td><td>{pip}</td>
+                            </tr>
+                          )})}
+                          {Object.values(nics).length === 0 && (
+                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No Network interfaces to display.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'bastions' && (
+                  <div>
+                    <div className="azure-content-header" style={{ paddingLeft: 0 }}>Bastions</div>
+                    <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                      <button className="azure-btn-primary" onClick={() => setShowCreateBastion(true)}><Plus size={14} /> Create</button>
+                    </div>
+                    {showCreateBastion ? (
+                      <div className="azure-form-container" style={{ marginTop: 20 }}>
+                        <form onSubmit={handleCreateBastion} className="azure-form">
+                          <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                          <div className="form-group"><label>Name *</label><input type="text" name="name" required placeholder="e.g., vnet-bastion" /></div>
+                          <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                          <div className="form-group"><label>Tier *</label><select name="sku"><option value="Basic">Basic</option><option value="Standard">Standard</option></select></div>
+                          <div className="form-group"><label>Virtual network *</label><select name="vnetId" required><option value="">Select</option>{Object.values(vnets).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></div>
+                          <div className="form-group"><label>Public IP address *</label><select name="publicIpAddressId" required><option value="">Select</option>{Object.values(publicIps).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+
+                          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                            <button type="submit" className="azure-btn-primary">Review + create</button>
+                            <button type="button" className="azure-btn-default" onClick={() => setShowCreateBastion(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>Tier</th><th>Virtual network</th></tr></thead>
+                        <tbody>
+                          {Object.values(bastions).map(b => {
+                            const vnet = vnets[b.vnetId]?.name || 'Unknown';
+                            return (
+                            <tr key={b.id}>
+                              <td className="resource-name"><ShieldCheck size={16} /> {b.name}</td>
+                              <td>{b.resourceGroup}</td><td>{b.location}</td><td>{b.sku}</td><td>{vnet}</td>
+                            </tr>
+                          )})}
+                          {Object.values(bastions).length === 0 && (
+                            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No Bastions to display.</td></tr>
                           )}
                         </tbody>
                       </table>

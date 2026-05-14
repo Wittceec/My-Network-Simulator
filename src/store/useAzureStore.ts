@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, RoleAssignment, DnsZone, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault, SqlServer, SqlDatabase, LogAnalyticsWorkspace, AzureFirewall, ApplicationGateway } from '../types/azure';
+import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, RoleAssignment, DnsZone, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault, SqlServer, SqlDatabase, LogAnalyticsWorkspace, AzureFirewall, ApplicationGateway, PublicIpAddress, NetworkInterface, AzureBastion } from '../types/azure';
 
 interface AzureState {
   resourceGroups: Record<string, ResourceGroup>;
@@ -23,6 +23,9 @@ interface AzureState {
   logWorkspaces: Record<string, LogAnalyticsWorkspace>;
   firewalls: Record<string, AzureFirewall>;
   appGateways: Record<string, ApplicationGateway>;
+  publicIps: Record<string, PublicIpAddress>;
+  nics: Record<string, NetworkInterface>;
+  bastions: Record<string, AzureBastion>;
   
   createResourceGroup: (rg: ResourceGroup) => void;
   deleteResourceGroup: (name: string) => void;
@@ -89,6 +92,15 @@ interface AzureState {
   createAppGateway: (agw: ApplicationGateway) => void;
   deleteAppGateway: (id: string) => void;
 
+  createPublicIp: (pip: PublicIpAddress) => void;
+  deletePublicIp: (id: string) => void;
+
+  createNic: (nic: NetworkInterface) => void;
+  deleteNic: (id: string) => void;
+
+  createBastion: (bastion: AzureBastion) => void;
+  deleteBastion: (id: string) => void;
+
   loadAzureState: (state: Partial<AzureState>) => void;
 }
 
@@ -114,6 +126,9 @@ export const useAzureStore = create<AzureState>((set) => ({
   logWorkspaces: {},
   firewalls: {},
   appGateways: {},
+  publicIps: {},
+  nics: {},
+  bastions: {},
 
   createResourceGroup: (rg) => set((state) => ({ resourceGroups: { ...state.resourceGroups, [rg.name]: rg } })),
   deleteResourceGroup: (name) => set((state) => {
@@ -273,6 +288,27 @@ export const useAzureStore = create<AzureState>((set) => ({
     return { appGateways: newAgw };
   }),
 
+  createPublicIp: (pip) => set((state) => ({ publicIps: { ...state.publicIps, [pip.id]: pip } })),
+  deletePublicIp: (id) => set((state) => {
+    const newPip = { ...state.publicIps };
+    delete newPip[id];
+    return { publicIps: newPip };
+  }),
+
+  createNic: (nic) => set((state) => ({ nics: { ...state.nics, [nic.id]: nic } })),
+  deleteNic: (id) => set((state) => {
+    const newNic = { ...state.nics };
+    delete newNic[id];
+    return { nics: newNic };
+  }),
+
+  createBastion: (bastion) => set((state) => ({ bastions: { ...state.bastions, [bastion.id]: bastion } })),
+  deleteBastion: (id) => set((state) => {
+    const newBastions = { ...state.bastions };
+    delete newBastions[id];
+    return { bastions: newBastions };
+  }),
+
   loadAzureState: (newState) => set((state) => ({
     resourceGroups: newState.resourceGroups || {},
     vnets: newState.vnets || {},
@@ -294,6 +330,9 @@ export const useAzureStore = create<AzureState>((set) => ({
     sqlDatabases: newState.sqlDatabases || {},
     logWorkspaces: newState.logWorkspaces || {},
     firewalls: newState.firewalls || {},
-    appGateways: newState.appGateways || {}
+    appGateways: newState.appGateways || {},
+    publicIps: newState.publicIps || {},
+    nics: newState.nics || {},
+    bastions: newState.bastions || {}
   }))
 }));

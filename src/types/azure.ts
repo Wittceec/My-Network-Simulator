@@ -208,3 +208,25 @@ export interface ApplicationGateway extends AzureResource {
   capacity: number;
   vnetId: string;
 }
+
+export interface PublicIpAddress extends AzureResource {
+  type: 'Microsoft.Network/publicIPAddresses';
+  sku: 'Basic' | 'Standard';
+  allocationMethod: 'Static' | 'Dynamic';
+  ipAddress?: string;
+}
+
+export interface NetworkInterface extends AzureResource {
+  type: 'Microsoft.Network/networkInterfaces';
+  subnetId: string;
+  privateIpAddress: string;
+  publicIpAddressId?: string;
+  nsgId?: string;
+}
+
+export interface AzureBastion extends AzureResource {
+  type: 'Microsoft.Network/bastionHosts';
+  vnetId: string;
+  publicIpAddressId: string;
+  sku: 'Basic' | 'Standard';
+}

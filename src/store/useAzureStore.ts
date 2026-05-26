@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, RoleAssignment, DnsZone, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault, SqlServer, SqlDatabase, LogAnalyticsWorkspace, AzureFirewall, ApplicationGateway, PublicIpAddress, NetworkInterface, AzureBastion } from '../types/azure';
+import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, EntraGroup, RoleAssignment, DnsZone, AppServicePlan, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault, SqlServer, SqlDatabase, LogAnalyticsWorkspace, AzureFirewall, ApplicationGateway, PublicIpAddress, NetworkInterface, AzureBastion, ManagedIdentity, AdvisorRecommendation, PolicyCompliance } from '../types/azure';
 
 interface AzureState {
   resourceGroups: Record<string, ResourceGroup>;
@@ -26,6 +26,11 @@ interface AzureState {
   publicIps: Record<string, PublicIpAddress>;
   nics: Record<string, NetworkInterface>;
   bastions: Record<string, AzureBastion>;
+  entraGroups: Record<string, EntraGroup>;
+  appServicePlans: Record<string, AppServicePlan>;
+  managedIdentities: Record<string, ManagedIdentity>;
+  recommendations: AdvisorRecommendation[];
+  compliance: PolicyCompliance[];
   
   createResourceGroup: (rg: ResourceGroup) => void;
   deleteResourceGroup: (name: string) => void;
@@ -101,6 +106,18 @@ interface AzureState {
   createBastion: (bastion: AzureBastion) => void;
   deleteBastion: (id: string) => void;
 
+  createEntraGroup: (group: EntraGroup) => void;
+  deleteEntraGroup: (id: string) => void;
+
+  createAppServicePlan: (asp: AppServicePlan) => void;
+  deleteAppServicePlan: (id: string) => void;
+
+  createManagedIdentity: (mi: ManagedIdentity) => void;
+  deleteManagedIdentity: (id: string) => void;
+
+  refreshAdvisor: () => void;
+  refreshCompliance: () => void;
+
   loadAzureState: (state: Partial<AzureState>) => void;
 }
 
@@ -129,6 +146,11 @@ export const useAzureStore = create<AzureState>((set) => ({
   publicIps: {},
   nics: {},
   bastions: {},
+  entraGroups: {},
+  appServicePlans: {},
+  managedIdentities: {},
+  recommendations: [],
+  compliance: [],
 
   createResourceGroup: (rg) => set((state) => ({ resourceGroups: { ...state.resourceGroups, [rg.name]: rg } })),
   deleteResourceGroup: (name) => set((state) => {
@@ -309,6 +331,104 @@ export const useAzureStore = create<AzureState>((set) => ({
     return { bastions: newBastions };
   }),
 
+  createEntraGroup: (group) => set((state) => ({ entraGroups: { ...state.entraGroups, [group.id]: group } })),
+  deleteEntraGroup: (id) => set((state) => {
+    const newGroups = { ...state.entraGroups };
+    delete newGroups[id];
+    return { entraGroups: newGroups };
+  }),
+
+  createAppServicePlan: (asp) => set((state) => ({ appServicePlans: { ...state.appServicePlans, [asp.id]: asp } })),
+  deleteAppServicePlan: (id) => set((state) => {
+    const newAsps = { ...state.appServicePlans };
+    delete newAsps[id];
+    return { appServicePlans: newAsps };
+  }),
+
+  createManagedIdentity: (mi) => set((state) => ({ managedIdentities: { ...state.managedIdentities, [mi.id]: mi } })),
+  deleteManagedIdentity: (id) => set((state) => {
+    const newMis = { ...state.managedIdentities };
+    delete newMis[id];
+    return { managedIdentities: newMis };
+  }),
+
+  refreshAdvisor: () => set((state) => {
+    const recs: AdvisorRecommendation[] = [];
+    
+    // 1. Check for VMs without NSGs
+    Object.values(state.vms).forEach(vm => {
+      const vnet = Object.values(state.vnets).find(v => v.subnets.some(s => s.id === vm.subnetId));
+      const subnet = vnet?.subnets.find(s => s.id === vm.subnetId);
+      if (subnet && !subnet.nsgId) {
+        recs.push({
+          id: `rec-nsg-${vm.id}`,
+          category: 'Security',
+          impact: 'High',
+          description: `Virtual machine '${vm.name}' is in a subnet without a Network Security Group.`,
+          resourceId: vm.id
+        });
+      }
+    });
+
+    // 2. Check for App Services without plans (shouldn't happen with our UI, but good for sim)
+    Object.values(state.appServices).forEach(app => {
+      if (!state.appServicePlans[app.appServicePlanId]) {
+        recs.push({
+          id: `rec-asp-${app.id}`,
+          category: 'Operational Excellence',
+          impact: 'Medium',
+          description: `App Service '${app.name}' is orphaned (missing plan).`,
+          resourceId: app.id
+        });
+      }
+    });
+
+    // 3. Cost check: Basic Public IPs vs Standard
+    Object.values(state.publicIps).forEach(pip => {
+      if (pip.sku === 'Basic') {
+        recs.push({
+          id: `rec-pip-${pip.id}`,
+          category: 'Performance',
+          impact: 'Low',
+          description: `Upgrade Public IP '${pip.name}' to Standard SKU for better availability.`,
+          resourceId: pip.id
+        });
+      }
+    });
+
+    return { recommendations: recs };
+  }),
+
+  refreshCompliance: () => set((state) => {
+    const compliance: PolicyCompliance[] = [];
+    
+    // Policy: Allowed locations (Simulate only East US)
+    const allResources = [
+      ...Object.values(state.vnets),
+      ...Object.values(state.vms),
+      ...Object.values(state.storageAccounts)
+    ];
+
+    allResources.forEach(res => {
+      if (res.location !== 'eastus') {
+        compliance.push({
+          policyDefinitionName: 'Allowed locations',
+          resourceId: res.id,
+          complianceState: 'Non-compliant',
+          reason: `Resource '${res.name}' is in '${res.location}', which is not allowed.`
+        });
+      } else {
+        compliance.push({
+          policyDefinitionName: 'Allowed locations',
+          resourceId: res.id,
+          complianceState: 'Compliant'
+        });
+      }
+    });
+
+    return { compliance };
+  }),
+
   loadAzureState: (newState) => set((state) => ({
     resourceGroups: newState.resourceGroups || {},
     vnets: newState.vnets || {},
@@ -333,6 +453,11 @@ export const useAzureStore = create<AzureState>((set) => ({
     appGateways: newState.appGateways || {},
     publicIps: newState.publicIps || {},
     nics: newState.nics || {},
-    bastions: newState.bastions || {}
+    bastions: newState.bastions || {},
+    entraGroups: newState.entraGroups || {},
+    appServicePlans: newState.appServicePlans || {},
+    managedIdentities: newState.managedIdentities || {},
+    recommendations: newState.recommendations || [],
+    compliance: newState.compliance || []
   }))
 }));

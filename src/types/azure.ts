@@ -119,6 +119,13 @@ export interface EntraUser {
   jobTitle?: string;
 }
 
+export interface EntraGroup {
+  id: string;
+  displayName: string;
+  groupType: 'Security' | 'Microsoft 365';
+  members: string[]; // Array of EntraUser IDs
+}
+
 export interface RoleAssignment {
   id: string;
   principalId: string; // The User ID
@@ -141,9 +148,15 @@ export interface DnsZone extends AzureResource {
   linkedVnetIds?: string[]; // Only for Private DNS Zones
 }
 
+export interface AppServicePlan extends AzureResource {
+  type: 'Microsoft.Web/serverfarms';
+  sku: 'F1' | 'B1' | 'S1' | 'P1v2';
+  os: 'Linux' | 'Windows';
+}
+
 export interface AppService extends AzureResource {
   type: 'Microsoft.Web/sites';
-  appServicePlan: string;
+  appServicePlanId: string;
   runtimeStack: string; // e.g. Node.js 18, .NET 7, Python 3.10
   status: 'Running' | 'Stopped';
 }
@@ -229,4 +242,34 @@ export interface AzureBastion extends AzureResource {
   vnetId: string;
   publicIpAddressId: string;
   sku: 'Basic' | 'Standard';
+}
+
+export interface ManagedIdentity extends AzureResource {
+  type: 'Microsoft.ManagedIdentity/userAssignedIdentities';
+  clientId: string;
+}
+
+export interface AdvisorRecommendation {
+  id: string;
+  category: 'Cost' | 'Security' | 'High Availability' | 'Performance' | 'Operational Excellence';
+  impact: 'High' | 'Medium' | 'Low';
+  description: string;
+  resourceId: string;
+}
+
+export interface PolicyCompliance {
+  policyDefinitionName: string;
+  resourceId: string;
+  complianceState: 'Compliant' | 'Non-compliant';
+  reason?: string;
+}
+
+export interface ConnectivityTest {
+  sourceResourceId: string;
+  destination: string; // IP or Resource ID
+  destinationPort: number;
+  protocol: 'Tcp' | 'Icmp';
+  status: 'Reachable' | 'Unreachable';
+  hops: string[];
+  issues: string[];
 }

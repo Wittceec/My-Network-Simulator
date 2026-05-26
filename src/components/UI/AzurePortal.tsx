@@ -1,16 +1,17 @@
 import React, { useState, Component, ErrorInfo } from 'react';
 import { useAzureStore } from '../../store/useAzureStore';
-import { X, Plus, Server, Network, Folder, Shield, ArrowRight, LayoutDashboard, Search, Bell, Settings, UserCircle, Activity, TerminalSquare, Map, Scale, ArrowRightLeft, Database, Users, Globe, AppWindow, Key, Box, Layers, Archive, Monitor, Flame, Split, Plug, ShieldCheck } from 'lucide-react';
+import { X, Plus, Server, Network, Folder, Shield, ArrowRight, LayoutDashboard, Search, Bell, Settings, UserCircle, Activity, TerminalSquare, Map, Scale, ArrowRightLeft, Database, Users, Globe, AppWindow, Key, Box, Layers, Archive, Monitor, Flame, Split, Plug, ShieldCheck, UsersRound, Fingerprint, BookOpen } from 'lucide-react';
 import type { ResourceGroup, VNet, AzureRegion, VM } from '../../types/azure';
 import AzureVMWizard from './AzureVMWizard';
 import AzureVMDetails from './AzureVMDetails';
 import AzureCloudShell from './AzureCloudShell';
+import CliLabSelector from './CliLabSelector';
 
 interface AzurePortalProps {
   onClose: () => void;
 }
 
-type Tab = 'home' | 'allResources' | 'costManagement' | 'resourceGroups' | 'vnets' | 'vms' | 'vngs' | 'nsgs' | 'routeTables' | 'loadBalancers' | 'peerings' | 'storageAccounts' | 'entraId' | 'dnsZones' | 'appServices' | 'keyVaults' | 'aksClusters' | 'vmss' | 'recoveryVaults' | 'sqlServers' | 'sqlDatabases' | 'logWorkspaces' | 'firewalls' | 'appGateways' | 'publicIps' | 'nics' | 'bastions';
+type Tab = 'home' | 'allResources' | 'costManagement' | 'resourceGroups' | 'vnets' | 'vms' | 'vngs' | 'nsgs' | 'routeTables' | 'loadBalancers' | 'peerings' | 'storageAccounts' | 'entraId' | 'dnsZones' | 'appServices' | 'keyVaults' | 'aksClusters' | 'vmss' | 'recoveryVaults' | 'sqlServers' | 'sqlDatabases' | 'logWorkspaces' | 'firewalls' | 'appGateways' | 'publicIps' | 'nics' | 'bastions' | 'entraGroups' | 'appServicePlans' | 'managedIdentities' | 'advisor' | 'policy' | 'networkWatcher';
 
 class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
@@ -22,6 +23,59 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
     }
     return this.props.children;
   }
+}
+
+function NetworkWatcherBlade({ vms }: { vms: any[] }) {
+  const [sourceId, setSourceId] = useState('');
+  const [destIp, setDestIp] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+  const [result, setResult] = useState<{ status: string, details: string } | null>(null);
+
+  const runTest = () => {
+    setIsTesting(true);
+    setResult(null);
+    setTimeout(() => {
+      const sourceVm = vms.find(v => v.id === sourceId);
+      
+      if (!sourceVm) {
+        setResult({ status: 'Error', details: 'Source VM not found.' });
+      } else if (!destIp) {
+        setResult({ status: 'Error', details: 'Destination IP/VM required.' });
+      } else {
+        setResult({ status: 'Reachable', details: 'Connection successful. Path: VNet -> NSG (Allow) -> Target.' });
+      }
+      setIsTesting(false);
+    }, 2000);
+  };
+
+  return (
+    <div>
+      <div className="azure-content-header" style={{ paddingLeft: 0 }}>Network Watcher | Connection troubleshoot</div>
+      <div className="azure-form-container" style={{ marginTop: 20, maxWidth: 600 }}>
+        <div className="form-group">
+          <label>Source Virtual Machine</label>
+          <select value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="azure-input">
+            <option value="">Select a VM</option>
+            {vms.map(vm => <option key={vm.id} value={vm.id}>{vm.name}</option>)}
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Destination IP address or VM Name</label>
+          <input type="text" value={destIp} onChange={(e) => setDestIp(e.target.value)} placeholder="e.g. 10.0.0.4 or myVM" className="azure-input" />
+        </div>
+        <button className="azure-btn-primary" onClick={runTest} disabled={isTesting}>
+          {isTesting ? 'Checking connectivity...' : 'Check'}
+        </button>
+      </div>
+
+      {result && (
+        <div className={`azure-dash-card`} style={{ marginTop: 20, borderLeft: `4px solid ${result.status === 'Reachable' ? '#107c10' : '#d13438'}` }}>
+          <h3 style={{ margin: 0, color: result.status === 'Reachable' ? '#107c10' : '#d13438' }}>{result.status}</h3>
+          <p>{result.details}</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AzurePortal({ onClose }: AzurePortalProps) {
@@ -50,12 +104,16 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
   const [showCreatePip, setShowCreatePip] = useState(false);
   const [showCreateNic, setShowCreateNic] = useState(false);
   const [showCreateBastion, setShowCreateBastion] = useState(false);
+  const [showCreateEntraGroup, setShowCreateEntraGroup] = useState(false);
+  const [showCreateAsp, setShowCreateAsp] = useState(false);
+  const [showCreateMi, setShowCreateMi] = useState(false);
   const [showCreateVM, setShowCreateVM] = useState(false);
   const [selectedVM, setSelectedVM] = useState<VM | null>(null);
   const [isGlobalSidebarExpanded, setIsGlobalSidebarExpanded] = useState(false);
   const [showCloudShell, setShowCloudShell] = useState(false);
+  const [showCliLab, setShowCliLab] = useState(false);
 
-  const { resourceGroups, vnets, vms, vngs, nsgs, routeTables, loadBalancers, storageAccounts, entraUsers, roleAssignments, dnsZones, appServices, keyVaults, aksClusters, vmss, recoveryVaults, sqlServers, sqlDatabases, logWorkspaces, firewalls, appGateways, publicIps, nics, bastions, createResourceGroup, createVNet, createVM, createVNG, createNSG, createRouteTable, createLoadBalancer, createStorageAccount, createEntraUser, createRoleAssignment, createDnsZone, createAppService, createKeyVault, createAksCluster, createVMSS, createRecoveryVault, createSqlServer, createSqlDatabase, createLogWorkspace, createFirewall, createAppGateway, createPublicIp, createNic, createBastion } = useAzureStore();
+  const { resourceGroups, vnets, vms, vngs, nsgs, routeTables, loadBalancers, storageAccounts, entraUsers, entraGroups, roleAssignments, dnsZones, appServicePlans, appServices, keyVaults, aksClusters, vmss, recoveryVaults, sqlServers, sqlDatabases, logWorkspaces, firewalls, appGateways, publicIps, nics, bastions, managedIdentities, recommendations, compliance, createResourceGroup, createVNet, createVM, createVNG, createNSG, createRouteTable, createLoadBalancer, createStorageAccount, createEntraUser, createEntraGroup, createRoleAssignment, createDnsZone, createAppServicePlan, createAppService, createKeyVault, createAksCluster, createVMSS, createRecoveryVault, createSqlServer, createSqlDatabase, createLogWorkspace, createFirewall, createAppGateway, createPublicIp, createNic, createBastion, createManagedIdentity, refreshAdvisor, refreshCompliance } = useAzureStore();
 
   const allResources = [
     ...Object.values(resourceGroups).map(rg => ({ name: rg.name, type: 'Resource group', date: 'Just now' })),
@@ -80,7 +138,10 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
     ...Object.values(appGateways).map(a => ({ name: a.name, type: 'Application gateway', date: 'Just now' })),
     ...Object.values(publicIps).map(p => ({ name: p.name, type: 'Public IP address', date: 'Just now' })),
     ...Object.values(nics).map(n => ({ name: n.name, type: 'Network interface', date: 'Just now' })),
-    ...Object.values(bastions).map(b => ({ name: b.name, type: 'Bastion', date: 'Just now' }))
+    ...Object.values(bastions).map(b => ({ name: b.name, type: 'Bastion', date: 'Just now' })),
+    ...Object.values(entraGroups).map(g => ({ name: g.displayName, type: 'Group', date: 'Just now' })),
+    ...Object.values(appServicePlans).map(p => ({ name: p.name, type: 'App Service plan', date: 'Just now' })),
+    ...Object.values(managedIdentities).map(m => ({ name: m.name, type: 'Managed Identity', date: 'Just now' }))
   ].sort((a, b) => a.name.localeCompare(b.name));
 
   const handleCreateRG = (e: React.FormEvent<HTMLFormElement>) => {
@@ -554,6 +615,47 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
     setShowCreateBastion(false);
   };
 
+  const handleCreateEntraGroup = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createEntraGroup({
+      id: `group-${Date.now()}`,
+      displayName: formData.get('displayName') as string,
+      groupType: formData.get('groupType') as 'Security' | 'Microsoft 365',
+      members: []
+    });
+    setShowCreateEntraGroup(false);
+  };
+
+  const handleCreateAsp = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createAppServicePlan({
+      id: `asp-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.Web/serverfarms',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      sku: formData.get('sku') as any,
+      os: formData.get('os') as 'Linux' | 'Windows'
+    });
+    setShowCreateAsp(false);
+  };
+
+  const handleCreateMi = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createManagedIdentity({
+      id: `mi-${Date.now()}`,
+      name: formData.get('name') as string,
+      type: 'Microsoft.ManagedIdentity/userAssignedIdentities',
+      location: formData.get('location') as AzureRegion,
+      resourceGroup: formData.get('resourceGroup') as string,
+      clientId: `client-${Math.random().toString(36).substring(7)}`
+    });
+    setShowCreateMi(false);
+  };
+
   return (
     <div className="azure-portal-overlay">
       <div className="azure-portal-window">
@@ -572,7 +674,8 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <TerminalSquare size={18} color="#fff" style={{ cursor: 'pointer' }} onClick={() => setShowCloudShell(!showCloudShell)} />
+            <BookOpen size={18} color="#fff" style={{ cursor: 'pointer' }} onClick={() => setShowCliLab(true)} title="CLI Learning Labs" />
+            <TerminalSquare size={18} color="#fff" style={{ cursor: 'pointer' }} onClick={() => setShowCloudShell(!showCloudShell)} title="Cloud Shell" />
             <Settings size={18} color="#fff" style={{ cursor: 'pointer' }} />
             <Bell size={18} color="#fff" style={{ cursor: 'pointer' }} />
             <UserCircle size={24} color="#fff" style={{ cursor: 'pointer' }} />
@@ -661,6 +764,10 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
               <Archive size={18} color={activeTab === 'recoveryVaults' ? '#0078D4' : '#605e5c'} />
               {isGlobalSidebarExpanded && <span>Recovery Services vaults</span>}
             </button>
+            <button className={`nav-item ${activeTab === 'managedIdentities' ? 'active' : ''}`} onClick={() => { setActiveTab('managedIdentities'); setIsGlobalSidebarExpanded(false); }} title="Managed Identities">
+              <Fingerprint size={18} color={activeTab === 'managedIdentities' ? '#0078D4' : '#605e5c'} />
+              {isGlobalSidebarExpanded && <span>Managed Identities</span>}
+            </button>
           </div>
 
           {/* Service Sidebar (Blade) */}
@@ -701,11 +808,16 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                   </div>
                 </>
               )}
-              {['resourceGroups', 'vnets', 'vms', 'vngs', 'nsgs', 'routeTables', 'loadBalancers', 'peerings', 'storageAccounts', 'dnsZones', 'appServices', 'keyVaults', 'aksClusters', 'vmss', 'recoveryVaults', 'sqlServers', 'sqlDatabases', 'logWorkspaces', 'firewalls', 'appGateways', 'publicIps', 'nics', 'bastions'].includes(activeTab) && (
+              {['resourceGroups', 'vnets', 'vms', 'vngs', 'nsgs', 'routeTables', 'loadBalancers', 'peerings', 'storageAccounts', 'dnsZones', 'appServices', 'keyVaults', 'aksClusters', 'vmss', 'recoveryVaults', 'sqlServers', 'sqlDatabases', 'logWorkspaces', 'firewalls', 'appGateways', 'publicIps', 'nics', 'bastions', 'appServicePlans', 'managedIdentities', 'advisor', 'policy', 'networkWatcher'].includes(activeTab) && (
                 <>
                   <div className="sidebar-header">Resource Manager</div>
                   <div className="nav-group">
                     <button className="nav-item" onClick={() => setActiveTab('allResources')}><div className="icon-wrapper"><Folder size={16} /></div> All resources</button>
+                    <div className="nav-group-title">Help + Support</div>
+                    <button className={`nav-item ${activeTab === 'advisor' ? 'active' : ''}`} onClick={() => { refreshAdvisor(); setActiveTab('advisor'); }}><div className="icon-wrapper"><Activity size={16} /></div> Advisor</button>
+                    <button className={`nav-item ${activeTab === 'policy' ? 'active' : ''}`} onClick={() => { refreshCompliance(); setActiveTab('policy'); }}><div className="icon-wrapper"><Shield size={16} /></div> Policy</button>
+                    <button className={`nav-item ${activeTab === 'networkWatcher' ? 'active' : ''}`} onClick={() => setActiveTab('networkWatcher')}><div className="icon-wrapper"><Monitor size={16} /></div> Network Watcher</button>
+                    <div className="nav-group-title">Resources</div>
                     <button className={`nav-item ${activeTab === 'resourceGroups' ? 'active' : ''}`} onClick={() => setActiveTab('resourceGroups')}><div className="icon-wrapper"><Folder size={16} /></div> Resource groups</button>
                     <button className={`nav-item ${activeTab === 'vms' ? 'active' : ''}`} onClick={() => setActiveTab('vms')}><div className="icon-wrapper"><Server size={16} /></div> Virtual machines</button>
                     <button className={`nav-item ${activeTab === 'vnets' ? 'active' : ''}`} onClick={() => setActiveTab('vnets')}><div className="icon-wrapper"><Network size={16} /></div> Virtual networks</button>
@@ -729,6 +841,27 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                     <button className={`nav-item ${activeTab === 'publicIps' ? 'active' : ''}`} onClick={() => setActiveTab('publicIps')}><div className="icon-wrapper"><Globe size={16} /></div> Public IP addresses</button>
                     <button className={`nav-item ${activeTab === 'nics' ? 'active' : ''}`} onClick={() => setActiveTab('nics')}><div className="icon-wrapper"><Plug size={16} /></div> Network interfaces</button>
                     <button className={`nav-item ${activeTab === 'bastions' ? 'active' : ''}`} onClick={() => setActiveTab('bastions')}><div className="icon-wrapper"><ShieldCheck size={16} /></div> Bastions</button>
+                    <button className={`nav-item ${activeTab === 'appServicePlans' ? 'active' : ''}`} onClick={() => setActiveTab('appServicePlans')}><div className="icon-wrapper"><Layers size={16} /></div> App Service plans</button>
+                    <button className={`nav-item ${activeTab === 'managedIdentities' ? 'active' : ''}`} onClick={() => setActiveTab('managedIdentities')}><div className="icon-wrapper"><Fingerprint size={16} /></div> Managed Identities</button>
+                  </div>
+                </>
+              )}
+              {activeTab === 'entraId' && (
+                <>
+                  <div className="sidebar-header">Microsoft Entra ID</div>
+                  <div className="nav-group">
+                    <button className="nav-item active"><div className="icon-wrapper"><Users size={16} /></div> Overview</button>
+                    <button className="nav-item" onClick={() => setActiveTab('entraId')}><div className="icon-wrapper"><Users size={16} /></div> Users</button>
+                    <button className="nav-item" onClick={() => setActiveTab('entraGroups')}><div className="icon-wrapper"><UsersRound size={16} /></div> Groups</button>
+                  </div>
+                </>
+              )}
+              {activeTab === 'entraGroups' && (
+                <>
+                  <div className="sidebar-header">Microsoft Entra ID | Groups</div>
+                  <div className="nav-group">
+                    <button className="nav-item" onClick={() => setActiveTab('entraId')}><div className="icon-wrapper"><Users size={16} /></div> All users</button>
+                    <button className="nav-item active"><div className="icon-wrapper"><UsersRound size={16} /></div> All groups</button>
                   </div>
                 </>
               )}
@@ -1358,9 +1491,9 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                           <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
                           <div className="form-group"><label>Name *</label><input type="text" name="name" required placeholder="e.g., mywebapp" /></div>
                           <div className="form-group"><label>Publish *</label><select name="publish"><option value="Code">Code</option><option value="Docker">Docker Container</option></select></div>
-                          <div className="form-group"><label>Runtime stack *</label><select name="runtimeStack"><option value=".NET 7 (LTS)">.NET 7 (LTS)</option><option value="Node.js 18 LTS">Node.js 18 LTS</option><option value="Python 3.10">Python 3.10</option><option value="Java 17">Java 17</option></select></div>
+                          <div className="form-group"><label>App service plan *</label><select name="appServicePlanId" required><option value="">Select</option>{Object.values(appServicePlans).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                          <div className="form-group"><label>Runtime stack *</label><select name="runtimeStack"><option value="Node.js 18">Node.js 18</option><option value=".NET 7">.NET 7</option><option value="Python 3.10">Python 3.10</option><option value="Java 17">Java 17</option></select></div>
                           <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
-                          <div className="form-group"><label>App Service Plan *</label><input type="text" name="appServicePlan" defaultValue="ASP-DefaultPlan" required /></div>
 
                           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                             <button type="submit" className="azure-btn-primary">Review + create</button>
@@ -1370,12 +1503,12 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                       </div>
                     ) : (
                       <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
-                        <thead><tr><th>Name</th><th>Status</th><th>Resource group</th><th>Location</th><th>App Service Plan</th><th>Runtime</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Resource group</th><th>App Service Plan</th><th>Status</th></tr></thead>
                         <tbody>
                           {Object.values(appServices).map(app => (
                             <tr key={app.id}>
                               <td className="resource-name"><AppWindow size={16} /> {app.name}</td>
-                              <td>{app.status}</td><td>{app.resourceGroup}</td><td>{app.location}</td><td>{app.appServicePlan}</td><td>{app.runtimeStack}</td>
+                              <td>{app.resourceGroup}</td><td>{appServicePlans[app.appServicePlanId]?.name || 'Unknown'}</td><td>{app.status}</td>
                             </tr>
                           ))}
                           {Object.values(appServices).length === 0 && (
@@ -1885,6 +2018,188 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
               </div>
             )}
 
+            {activeTab === 'entraGroups' && (
+              <div className="azure-content-scroll">
+                <div className="azure-content-header" style={{ paddingLeft: 0 }}>Groups | All groups</div>
+                <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                  <button className="azure-btn-primary" onClick={() => setShowCreateEntraGroup(true)}><Plus size={14} /> New group</button>
+                </div>
+                {showCreateEntraGroup ? (
+                  <div className="azure-form-container" style={{ marginTop: 20 }}>
+                    <form onSubmit={handleCreateEntraGroup} className="azure-form">
+                      <div className="form-group"><label>Group type *</label><select name="groupType"><option value="Security">Security</option><option value="Microsoft 365">Microsoft 365</option></select></div>
+                      <div className="form-group"><label>Group name *</label><input type="text" name="displayName" required /></div>
+                      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                        <button type="submit" className="azure-btn-primary">Create</button>
+                        <button type="button" className="azure-btn-default" onClick={() => setShowCreateEntraGroup(false)}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                    <thead><tr><th>Display name</th><th>Group type</th><th>Object ID</th></tr></thead>
+                    <tbody>
+                      {Object.values(entraGroups).map(g => (
+                        <tr key={g.id}>
+                          <td className="resource-name"><UsersRound size={16} /> {g.displayName}</td>
+                          <td>{g.groupType}</td><td>{g.id}</td>
+                        </tr>
+                      ))}
+                      {Object.values(entraGroups).length === 0 && (
+                        <tr><td colSpan={3} style={{ textAlign: 'center', color: '#666' }}>No groups to display.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'appServicePlans' && (
+              <div className="azure-content-scroll">
+                <div className="azure-content-header" style={{ paddingLeft: 0 }}>App Service plans</div>
+                <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                  <button className="azure-btn-primary" onClick={() => setShowCreateAsp(true)}><Plus size={14} /> Create</button>
+                </div>
+                {showCreateAsp ? (
+                  <div className="azure-form-container" style={{ marginTop: 20 }}>
+                    <form onSubmit={handleCreateAsp} className="azure-form">
+                      <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                      <div className="form-group"><label>Name *</label><input type="text" name="name" required /></div>
+                      <div className="form-group"><label>Operating System *</label><select name="os"><option value="Linux">Linux</option><option value="Windows">Windows</option></select></div>
+                      <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                      <div className="form-group"><label>Pricing tier *</label><select name="sku"><option value="F1">F1 (Free)</option><option value="B1">B1 (Basic)</option><option value="S1">S1 (Standard)</option><option value="P1v2">P1v2 (Premium)</option></select></div>
+                      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                        <button type="submit" className="azure-btn-primary">Create</button>
+                        <button type="button" className="azure-btn-default" onClick={() => setShowCreateAsp(false)}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                    <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>SKU</th><th>OS</th></tr></thead>
+                    <tbody>
+                      {Object.values(appServicePlans).map(p => (
+                        <tr key={p.id}>
+                          <td className="resource-name"><Layers size={16} /> {p.name}</td>
+                          <td>{p.resourceGroup}</td><td>{p.location}</td><td>{p.sku}</td><td>{p.os}</td>
+                        </tr>
+                      ))}
+                      {Object.values(appServicePlans).length === 0 && (
+                        <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No App Service plans to display.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'managedIdentities' && (
+              <div className="azure-content-scroll">
+                <div className="azure-content-header" style={{ paddingLeft: 0 }}>Managed Identities</div>
+                <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                  <button className="azure-btn-primary" onClick={() => setShowCreateMi(true)}><Plus size={14} /> Create</button>
+                </div>
+                {showCreateMi ? (
+                  <div className="azure-form-container" style={{ marginTop: 20 }}>
+                    <form onSubmit={handleCreateMi} className="azure-form">
+                      <div className="form-group"><label>Resource group *</label><select name="resourceGroup" required><option value="">Select</option>{Object.keys(resourceGroups).map(rg => <option key={rg} value={rg}>{rg}</option>)}</select></div>
+                      <div className="form-group"><label>Name *</label><input type="text" name="name" required /></div>
+                      <div className="form-group"><label>Region *</label><select name="location"><option value="eastus">East US</option><option value="westus">West US</option></select></div>
+                      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                        <button type="submit" className="azure-btn-primary">Create</button>
+                        <button type="button" className="azure-btn-default" onClick={() => setShowCreateMi(false)}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <table className="azure-table azure-hover-table" style={{ marginTop: 20 }}>
+                    <thead><tr><th>Name</th><th>Resource group</th><th>Location</th><th>Client ID</th></tr></thead>
+                    <tbody>
+                      {Object.values(managedIdentities).map(m => (
+                        <tr key={m.id}>
+                          <td className="resource-name"><Fingerprint size={16} /> {m.name}</td>
+                          <td>{m.resourceGroup}</td><td>{m.location}</td><td>{m.clientId}</td>
+                        </tr>
+                      ))}
+                      {Object.values(managedIdentities).length === 0 && (
+                        <tr><td colSpan={4} style={{ textAlign: 'center', color: '#666' }}>No Managed Identities to display.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'advisor' && (
+              <div className="azure-content-scroll">
+                <div className="azure-content-header" style={{ paddingLeft: 0 }}>Advisor | Recommendations</div>
+                <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                  <button className="azure-toolbar-btn" onClick={() => refreshAdvisor()}><Activity size={14} /> Refresh</button>
+                </div>
+                <div style={{ display: 'flex', gap: 20, marginTop: 20 }}>
+                  <div className="azure-dash-card" style={{ flex: 1, borderTop: '4px solid #d13438' }}>
+                    <h4 style={{ margin: 0 }}>High Impact</h4>
+                    <div style={{ fontSize: 24, fontWeight: 600 }}>{recommendations.filter(r => r.impact === 'High').length}</div>
+                  </div>
+                  <div className="azure-dash-card" style={{ flex: 1, borderTop: '4px solid #ffaa44' }}>
+                    <h4 style={{ margin: 0 }}>Medium Impact</h4>
+                    <div style={{ fontSize: 24, fontWeight: 600 }}>{recommendations.filter(r => r.impact === 'Medium').length}</div>
+                  </div>
+                  <div className="azure-dash-card" style={{ flex: 1, borderTop: '4px solid #0078d4' }}>
+                    <h4 style={{ margin: 0 }}>Low Impact</h4>
+                    <div style={{ fontSize: 24, fontWeight: 600 }}>{recommendations.filter(r => r.impact === 'Low').length}</div>
+                  </div>
+                </div>
+                <table className="azure-table" style={{ marginTop: 20 }}>
+                  <thead><tr><th>Description</th><th>Category</th><th>Impact</th></tr></thead>
+                  <tbody>
+                    {recommendations.map(r => (
+                      <tr key={r.id}>
+                        <td>{r.description}</td>
+                        <td>{r.category}</td>
+                        <td style={{ color: r.impact === 'High' ? '#d13438' : r.impact === 'Medium' ? '#ffaa44' : '#0078d4', fontWeight: 600 }}>{r.impact}</td>
+                      </tr>
+                    ))}
+                    {recommendations.length === 0 && (
+                      <tr><td colSpan={3} style={{ textAlign: 'center', padding: 20 }}>No recommendations found. Great job!</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === 'policy' && (
+              <div className="azure-content-scroll">
+                <div className="azure-content-header" style={{ paddingLeft: 0 }}>Policy | Compliance</div>
+                <div className="azure-toolbar" style={{ paddingLeft: 0, borderBottom: 'none' }}>
+                  <button className="azure-toolbar-btn" onClick={() => refreshCompliance()}><Shield size={14} /> Refresh</button>
+                </div>
+                <table className="azure-table" style={{ marginTop: 20 }}>
+                  <thead><tr><th>Resource</th><th>Policy</th><th>Compliance state</th></tr></thead>
+                  <tbody>
+                    {compliance.map((c, i) => {
+                      const resName = allResources.find(r => (r as any).name === c.resourceId || (r as any).id === c.resourceId)?.name || c.resourceId;
+                      return (
+                        <tr key={i}>
+                          <td>{resName}</td>
+                          <td>{c.policyDefinitionName}</td>
+                          <td style={{ color: c.complianceState === 'Compliant' ? '#107c10' : '#d13438', fontWeight: 600 }}>
+                            {c.complianceState} {c.reason && <span style={{ fontWeight: 400, fontSize: 12, display: 'block', color: '#666' }}>{c.reason}</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === 'networkWatcher' && (
+              <div className="azure-content-scroll">
+                <NetworkWatcherBlade vms={Object.values(vms)} />
+              </div>
+            )}
+
             {activeTab === 'entraId' && (
               <div className="azure-content-scroll">
                 <div className="azure-content-header" style={{ paddingLeft: 0, paddingRight: 0 }}>
@@ -1981,6 +2296,9 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
         
         {/* Cloud Shell Overlay */}
         {showCloudShell && <AzureCloudShell onClose={() => setShowCloudShell(false)} />}
+        
+        {/* CLI Lab Selector */}
+        {showCliLab && <CliLabSelector onClose={() => setShowCliLab(false)} onOpenShell={() => setShowCloudShell(true)} />}
       </div>
     </div>
   );

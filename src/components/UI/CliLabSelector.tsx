@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useCliLabStore } from '../../store/useCliLabStore';
-import { X, Play, Terminal, CheckCircle } from 'lucide-react';
+import { X, Play, Terminal, CheckCircle, Dices } from 'lucide-react';
 
 interface CliLabSelectorProps {
   onClose: () => void;
@@ -8,11 +9,21 @@ interface CliLabSelectorProps {
 
 export default function CliLabSelector({ onClose, onOpenShell }: CliLabSelectorProps) {
   const { quests, startQuest, completedQuests } = useCliLabStore();
+  const [filter, setFilter] = useState<string>('All');
 
   const handleStart = (questId: string) => {
     startQuest(questId);
     onClose();
     onOpenShell();
+  };
+
+  const categories = ['All', ...new Set(Object.values(quests).map(q => q.category))];
+  const filteredQuests = Object.values(quests).filter(q => filter === 'All' || q.category === filter);
+
+  const handleRandom = () => {
+    if (filteredQuests.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * filteredQuests.length);
+    handleStart(filteredQuests[randomIndex].id);
   };
 
   return (
@@ -40,8 +51,41 @@ export default function CliLabSelector({ onClose, onOpenShell }: CliLabSelectorP
           <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={20} /></button>
         </div>
 
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {categories.map(c => (
+              <button 
+                key={c}
+                onClick={() => setFilter(c)}
+                style={{
+                  background: filter === c ? 'var(--accent)' : 'var(--bg-deeper)',
+                  color: filter === c ? '#fff' : 'var(--text-muted)',
+                  border: `1px solid ${filter === c ? 'var(--accent)' : 'var(--border)'}`,
+                  padding: '6px 16px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer',
+                  fontWeight: filter === c ? 600 : 400,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <button 
+            onClick={handleRandom}
+            style={{
+              background: 'linear-gradient(135deg, #FF6B6B, #845EC2)',
+              border: 'none', color: '#fff', padding: '8px 20px', borderRadius: '8px',
+              fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(132, 94, 194, 0.3)'
+            }}
+          >
+            <Dices size={18} />
+            Random Mission
+          </button>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-          {Object.values(quests).map((quest) => {
+          {filteredQuests.map((quest) => {
             const isCompleted = completedQuests.includes(quest.id);
             return (
               <div 

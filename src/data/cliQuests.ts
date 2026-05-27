@@ -284,5 +284,97 @@ export const CLI_QUESTS: Record<string, CliQuest> = {
         successMessage: 'Removed azurerm_storage_account.temp\nSuccessfully removed 1 resource instance(s).',
       }
     ]
+  },
+  'linux-201': {
+    id: 'linux-201',
+    title: 'Linux: Piping and Searching',
+    description: 'Learn how to chain commands together and search inside files using grep and pipes.',
+    category: 'Bash',
+    difficulty: 'Intermediate',
+    steps: [
+      {
+        id: 'linux-echo-redirect',
+        objective: 'Write the text "Hello World" into a file named "greeting.txt" using the echo command and a redirect (>).',
+        expectedCommand: /^echo\s+"?Hello\s+World"?\s+>\s+greeting\.txt$/i,
+        hint: 'echo "Hello World" > greeting.txt',
+        successMessage: '(Simulated) Wrote to greeting.txt',
+      },
+      {
+        id: 'linux-cat-grep',
+        objective: 'Read the contents of "greeting.txt" using cat, and pipe (|) the output into grep to search for the word "World".',
+        expectedCommand: /^cat\s+greeting\.txt\s+\|\s+grep\s+"?World"?$/i,
+        hint: 'cat greeting.txt | grep World',
+        successMessage: 'Hello World\n(Simulated) Command executed successfully.',
+      }
+    ]
+  },
+  'azcli-102': {
+    id: 'azcli-102',
+    title: 'Azure CLI: Storage Accounts',
+    description: 'Learn how to create a Storage Account and interact with Blob containers.',
+    category: 'AzureCLI',
+    difficulty: 'Beginner',
+    steps: [
+      {
+        id: 'az-storage-create',
+        objective: 'Create a storage account named "mystorageacct123" in the "CLI-Lab-RG" resource group with Standard_LRS SKU.',
+        expectedCommand: /^az\s+storage\s+account\s+create.*(-g|--resource-group)\s+CLI-Lab-RG.*(-n|--name)\s+mystorageacct123.*(--sku)\s+Standard_LRS.*$/i,
+        hint: 'az storage account create -n mystorageacct123 -g CLI-Lab-RG --sku Standard_LRS',
+        successMessage: '(Simulated) Storage account mystorageacct123 created.',
+      },
+      {
+        id: 'az-storage-container-create',
+        objective: 'Create a blob container named "mycontainer" inside your new storage account.',
+        expectedCommand: /^az\s+storage\s+container\s+create.*(-n|--name)\s+mycontainer.*(--account-name)\s+mystorageacct123.*$/i,
+        hint: 'az storage container create -n mycontainer --account-name mystorageacct123',
+        successMessage: '(Simulated) Container mycontainer created.',
+      }
+    ]
+  },
+  'terraform-102': {
+    id: 'terraform-102',
+    title: 'Terraform: Outputs and Variables',
+    description: 'Practice retrieving data from state using outputs and passing variable definitions inline.',
+    category: 'Terraform',
+    difficulty: 'Intermediate',
+    steps: [
+      {
+        id: 'tf-output',
+        objective: 'Retrieve all the output values from the current Terraform state.',
+        expectedCommand: /^terraform\s+output$/i,
+        hint: 'terraform output',
+        successMessage: 'vnet_id = "/subscriptions/.../virtualNetworks/MyVNet"\nvm_public_ip = "203.0.113.5"',
+      },
+      {
+        id: 'tf-apply-var',
+        objective: 'Run a terraform apply, but pass the variable "environment" with the value "staging" inline via the command line.',
+        expectedCommand: /^terraform\s+apply.*-var(\s+|=)"?environment=staging"?.*$/i,
+        hint: 'terraform apply -var="environment=staging"',
+        successMessage: 'Apply complete! Resources: 1 added, 0 changed, 0 destroyed.',
+      }
+    ]
+  },
+  'powershell-201': {
+    id: 'powershell-201',
+    title: 'PowerShell: Filtering and Objects',
+    description: 'Learn how to fetch Azure resources and filter them using PowerShell Where-Object.',
+    category: 'PowerShell',
+    difficulty: 'Intermediate',
+    steps: [
+      {
+        id: 'ps-get-vm',
+        objective: 'Get all Virtual Machines in the subscription.',
+        expectedCommand: /^Get-AzVM$/i,
+        hint: 'Get-AzVM',
+        successMessage: 'ResourceGroupName          Name      Location          VmSize  OsType            ProvisioningState\n-----------------          ----      --------          ------  ------            -----------------\nCLI-Lab-RG                 Web-VM    eastus    Standard_DS1_v2   Linux                    Succeeded',
+      },
+      {
+        id: 'ps-where-object',
+        objective: 'Pipe Get-AzVM into Where-Object to only find VMs where the Location is "eastus".',
+        expectedCommand: /^Get-AzVM\s+\|\s+Where-Object\s+\{?\s*\$_\.Location\s+-eq\s+['"]eastus['"]\s*\}?$/i,
+        hint: "Get-AzVM | Where-Object { $_.Location -eq 'eastus' }",
+        successMessage: '(Simulated) Output filtered to eastus VMs.',
+      }
+    ]
   }
 };

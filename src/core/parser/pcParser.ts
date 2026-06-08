@@ -3,6 +3,8 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import type { Device } from '../../types/device';
 import { simulatePing, tracePath, animatePath, resolveHostname } from '../logic/ping';
 import { useActiveDirectoryStore } from '../../store/useActiveDirectoryStore';
+import { useAzureStore } from '../../store/useAzureStore';
+import { useDnsStore } from '../../store/useDnsStore';
 
 export function executePcCommand(rawInput: string, device: Device): string[] {
   const input = rawInput.trim();
@@ -288,6 +290,61 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
       output.push('');
     } else {
       output.push('Usage: New-ADGroup -Name "Marketing"');
+    }
+  } else if (cmd === 'start-adsyncsynccycle') {
+    const adStore = useActiveDirectoryStore.getState();
+    const azureStore = useAzureStore.getState();
+    
+    output.push('Result: Success');
+    output.push('Starting identity synchronization...');
+    
+    let addedCount = 0;
+    
+    Object.values(adStore.users).forEach(adUser => {
+      const upn = adUser.userPrincipalName;
+      // Check if user exists in Azure Store
+      const azureUserExists = Object.values(azureStore.entraUsers).find(eu => eu.userPrincipalName === upn);
+      if (!azureUserExists) {
+        const newId = `eu-${Math.random().toString(36).substr(2, 5)}`;
+        azureStore.createEntraUser({
+          id: newId,
+          displayName: adUser.displayName || adUser.name,
+          userPrincipalName: upn,
+          userType: 'Member',
+          accountEnabled: adUser.enabled
+        });
+        addedCount++;
+      }
+    });
+    
+    output.push(`Synchronization completed. Exported ${addedCount} user(s) to Azure Active Directory.`);
+  } else if (cmd === 'resolve-dnsname') {
+    const dnsStore = useDnsStore.getState();
+    const nameToResolve = args[0];
+    if (!nameToResolve) {
+      output.push('Usage: Resolve-DnsName <Name>');
+      return output;
+    }
+    
+    // Simple mock resolution
+    const targetName = nameToResolve.toLowerCase().replace('.corp.local', '');
+    const zones = Object.values(dnsStore.zones);
+    let found = false;
+    
+    output.push(`Name                                           Type   TTL   Section    NameHost/IPAddress`);
+    output.push(`----                                           ----   ---   -------    ------------------`);
+
+    zones.forEach(zone => {
+      Object.values(zone.records).forEach(record => {
+        if (record.name.toLowerCase() === targetName || (record.name === '@' && nameToResolve.toLowerCase() === zone.name.toLowerCase())) {
+          output.push(`${nameToResolve.padEnd(46)} ${record.type.padEnd(6)} ${record.ttl.toString().padEnd(5)} Answer     ${record.data}`);
+          found = true;
+        }
+      });
+    });
+    
+    if (!found) {
+      output.push(`Resolve-DnsName : ${nameToResolve} : DNS name does not exist`);
     }
   } else if (cmd === 'add-adgroupmember') {
     const adStore = useActiveDirectoryStore.getState();

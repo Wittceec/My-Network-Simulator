@@ -6,10 +6,15 @@ import TerminalManager from './components/Terminal/TerminalManager';
 import LabSelector from './components/UI/LabSelector';
 import AzurePortal from './components/UI/AzurePortal';
 import JobPortal from './components/Job/JobPortal';
+import ServiceDesk from './components/Job/ServiceDesk';
 import ActiveDirectoryDashboard from './components/ActiveDirectory/ActiveDirectoryDashboard';
+import DnsManager from './components/DNS/DnsManager';
+import GroupPolicyManager from './components/GPO/GroupPolicyManager';
+import HyperVManager from './components/HyperV/HyperVManager';
+import FileServerResource from './components/FileServer/FileServerResource';
 import { useNetworkStore } from './store/useNetworkStore';
 import { useJobStore } from './store/useJobStore';
-import { Menu, Plus, Hexagon, BookOpen, Cloud, Briefcase, Server } from 'lucide-react';
+import { Menu, Plus, Hexagon, BookOpen, Cloud, Briefcase, Server, HeadphonesIcon, Globe, FileText, Monitor, Folder } from 'lucide-react';
 
 class AppErrorBoundary extends React.Component<{children: any}, {error: any}> {
   constructor(props: any) { super(props); this.state = { error: null }; }
@@ -38,10 +43,15 @@ interface TopbarProps {
   onOpenLibrary: () => void;
   onOpenAzure: () => void;
   onOpenJobPortal: () => void;
+  onOpenServiceDesk: () => void;
   onOpenAD: () => void;
+  onOpenDNS: () => void;
+  onOpenGPO: () => void;
+  onOpenHyperV: () => void;
+  onOpenFS: () => void;
 }
 
-function Topbar({ onMenu, onOpenLibrary, onOpenAzure, onOpenJobPortal, onOpenAD }: TopbarProps) {
+function Topbar({ onMenu, onOpenLibrary, onOpenAzure, onOpenJobPortal, onOpenServiceDesk, onOpenAD, onOpenDNS, onOpenGPO, onOpenHyperV, onOpenFS }: TopbarProps) {
   const isMobile = useIsMobile();
   const deviceCount = useNetworkStore((s) => Object.keys(s.devices).length);
   const jobStore = useJobStore();
@@ -82,10 +92,25 @@ function Topbar({ onMenu, onOpenLibrary, onOpenAzure, onOpenJobPortal, onOpenAD 
             <Cloud size={16} /> Azure Portal
           </button>
           <button className="btn btn-ghost" onClick={onOpenJobPortal} style={{ marginLeft: 8, color: jobStore.isClockedIn ? '#4ade80' : 'inherit' }}>
-            <Briefcase size={16} /> Job Portal {openTicketsCount > 0 && <span style={{background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: 10, fontSize: 10, marginLeft: 4}}>{openTicketsCount}</span>}
+            <Briefcase size={16} /> Job Portal
+          </button>
+          <button className="btn btn-ghost" onClick={onOpenServiceDesk} style={{ marginLeft: 8, color: '#eab308' }}>
+            <HeadphonesIcon size={16} /> Service Desk {openTicketsCount > 0 && <span style={{background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: 10, fontSize: 10, marginLeft: 4}}>{openTicketsCount}</span>}
           </button>
           <button className="btn btn-ghost" onClick={onOpenAD} style={{ marginLeft: 8, color: '#f59e0b' }}>
             <Server size={16} /> ADUC
+          </button>
+          <button className="btn btn-ghost" onClick={onOpenDNS} style={{ marginLeft: 8, color: '#3b82f6' }}>
+            <Globe size={16} /> DNS
+          </button>
+          <button className="btn btn-ghost" onClick={onOpenGPO} style={{ marginLeft: 8, color: '#10b981' }}>
+            <FileText size={16} /> GPO
+          </button>
+          <button className="btn btn-ghost" onClick={onOpenHyperV} style={{ marginLeft: 8, color: '#8b5cf6' }}>
+            <Monitor size={16} /> Hyper-V
+          </button>
+          <button className="btn btn-ghost" onClick={onOpenFS} style={{ marginLeft: 8, color: '#f59e0b' }}>
+            <Folder size={16} /> File Server
           </button>
         </>
       )}
@@ -105,7 +130,12 @@ function App() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [azureOpen, setAzureOpen] = useState(false);
   const [jobPortalOpen, setJobPortalOpen] = useState(false);
+  const [serviceDeskOpen, setServiceDeskOpen] = useState(false);
   const [adOpen, setAdOpen] = useState(false);
+  const [dnsOpen, setDnsOpen] = useState(false);
+  const [gpoOpen, setGpoOpen] = useState(false);
+  const [hypervOpen, setHypervOpen] = useState(false);
+  const [fsOpen, setFsOpen] = useState(false);
 
   return (
     <div
@@ -124,7 +154,12 @@ function App() {
           onOpenLibrary={() => setLibraryOpen(true)} 
           onOpenAzure={() => setAzureOpen(true)} 
           onOpenJobPortal={() => setJobPortalOpen(true)}
+          onOpenServiceDesk={() => setServiceDeskOpen(true)}
           onOpenAD={() => setAdOpen(true)} 
+          onOpenDNS={() => setDnsOpen(true)}
+          onOpenGPO={() => setGpoOpen(true)}
+          onOpenHyperV={() => setHypervOpen(true)}
+          onOpenFS={() => setFsOpen(true)}
         />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
           <Sidebar />
@@ -135,7 +170,12 @@ function App() {
         {libraryOpen && <LabSelector onClose={() => setLibraryOpen(false)} />}
         {azureOpen && <AppErrorBoundary><AzurePortal onClose={() => setAzureOpen(false)} /></AppErrorBoundary>}
         {jobPortalOpen && <AppErrorBoundary><JobPortal onClose={() => setJobPortalOpen(false)} /></AppErrorBoundary>}
+        {serviceDeskOpen && <AppErrorBoundary><ServiceDesk onClose={() => setServiceDeskOpen(false)} /></AppErrorBoundary>}
         {adOpen && <AppErrorBoundary><ActiveDirectoryDashboard onClose={() => setAdOpen(false)} /></AppErrorBoundary>}
+        {dnsOpen && <AppErrorBoundary><DnsManager onClose={() => setDnsOpen(false)} /></AppErrorBoundary>}
+        {gpoOpen && <AppErrorBoundary><GroupPolicyManager onClose={() => setGpoOpen(false)} /></AppErrorBoundary>}
+        {hypervOpen && <AppErrorBoundary><HyperVManager onClose={() => setHypervOpen(false)} /></AppErrorBoundary>}
+        {fsOpen && <AppErrorBoundary><FileServerResource onClose={() => setFsOpen(false)} /></AppErrorBoundary>}
       </ReactFlowProvider>
     </div>
   );

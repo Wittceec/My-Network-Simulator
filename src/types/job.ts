@@ -11,7 +11,10 @@ export interface Ticket {
   severity: TicketSeverity;
   status: TicketStatus;
   createdAt: number;
-  assignedTo?: string; // e.g. the user playing
+  resolvedAt?: number;
+  condition: any;
+  assignedTo?: string; // e.g. 'You'
+  notes?: { author: string, timestamp: number, content: string }[];
   resolutionNotes?: string;
   type: string; // The specific type of simulation event (e.g., 'ad_password_reset', 'azure_vm_deploy')
   targetResourceId?: string; // AD User ID, Azure VM ID, Network Device ID
@@ -28,6 +31,7 @@ export interface JobState {
   clockIn: (role: JobRole) => void;
   clockOut: () => void;
   addTicket: (ticket: Ticket) => void;
+  addTicketNote: (id: string, note: { author: string, timestamp: number, content: string }) => void;
   updateTicketStatus: (id: string, status: TicketStatus, notes?: string) => void;
   verifyTicketResolution: (id: string, verifyLogic: () => boolean) => boolean;
 }

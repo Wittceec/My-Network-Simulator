@@ -28,6 +28,17 @@ export const useJobStore = create<JobState>((set, get) => ({
     }
   })),
 
+  addTicketNote: (id: string, note: { author: string, timestamp: number, content: string }) => set((state) => {
+    const t = state.tickets[id];
+    if (!t) return state;
+    return {
+      tickets: {
+        ...state.tickets,
+        [id]: { ...t, notes: [...(t.notes || []), note] }
+      }
+    };
+  }),
+
   updateTicketStatus: (id: string, status: TicketStatus, notes?: string) => set((state) => {
     const ticket = state.tickets[id];
     if (!ticket) return state;

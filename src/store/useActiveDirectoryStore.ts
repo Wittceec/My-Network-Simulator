@@ -113,12 +113,12 @@ export const useActiveDirectoryStore = create<ActiveDirectoryState>((set) => ({
       users: {
         'usr-admin': {
           id: 'usr-admin', name: 'Administrator', type: 'User', distinguishedName: 'CN=Administrator,OU=Users,DC=corp,DC=local',
-          firstName: 'Admin', lastName: 'User', sAMAccountName: 'Administrator', userPrincipalName: 'admin@corp.local',
+          firstName: 'Admin', lastName: 'User', displayName: 'Administrator', sAMAccountName: 'Administrator', userPrincipalName: 'admin@corp.local',
           enabled: true, lockedOut: false, passwordExpired: false, groups: ['grp-domain-admins'], parentOuId: 'ou-users'
         },
         'usr-jdoe': {
           id: 'usr-jdoe', name: 'John Doe', type: 'User', distinguishedName: 'CN=John Doe,OU=Users,DC=corp,DC=local',
-          firstName: 'John', lastName: 'Doe', sAMAccountName: 'jdoe', userPrincipalName: 'jdoe@corp.local', department: 'Sales',
+          firstName: 'John', lastName: 'Doe', displayName: 'John Doe', sAMAccountName: 'jdoe', userPrincipalName: 'jdoe@corp.local', department: 'Sales',
           enabled: true, lockedOut: true, passwordExpired: false, groups: ['grp-domain-users'], parentOuId: 'ou-users'
         }
       },

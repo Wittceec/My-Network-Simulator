@@ -14,13 +14,27 @@ export interface ADUser extends ADObject {
   type: 'User';
   firstName: string;
   lastName: string;
+  displayName?: string;
+  description?: string;
+  office?: string;
+  telephone?: string;
+  email?: string;
+  
   sAMAccountName: string;
   userPrincipalName: string;
+  
   department?: string;
   title?: string;
+  company?: string;
+  manager?: string; // User ID
+  
   enabled: boolean;
   lockedOut: boolean;
   passwordExpired: boolean;
+  passwordNeverExpires?: boolean;
+  userCannotChangePassword?: boolean;
+  accountExpires?: number | null; // Timestamp or null
+  
   groups: string[]; // Group IDs
 }
 

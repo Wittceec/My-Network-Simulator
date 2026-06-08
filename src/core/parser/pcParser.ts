@@ -168,6 +168,82 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
         output.push(`Unlock-ADAccount : Cannot find an object with identity: '${username}' under: 'DC=corp,DC=local'.`);
       }
     }
+  } else if (cmd === 'disable-adaccount') {
+    const adStore = useActiveDirectoryStore.getState();
+    const identityIndex = args.indexOf('-Identity');
+    if (identityIndex !== -1 && args[identityIndex + 1]) {
+      const username = args[identityIndex + 1];
+      const user = Object.values(adStore.users).find(u => u.sAMAccountName.toLowerCase() === username.toLowerCase());
+      if (user) {
+        adStore.updateUser(user.id, { enabled: false });
+        output.push('');
+      } else {
+        output.push(`Disable-ADAccount : Cannot find an object with identity: '${username}'.`);
+      }
+    } else {
+      output.push('Usage: Disable-ADAccount -Identity <username>');
+    }
+  } else if (cmd === 'enable-adaccount') {
+    const adStore = useActiveDirectoryStore.getState();
+    const identityIndex = args.indexOf('-Identity');
+    if (identityIndex !== -1 && args[identityIndex + 1]) {
+      const username = args[identityIndex + 1];
+      const user = Object.values(adStore.users).find(u => u.sAMAccountName.toLowerCase() === username.toLowerCase());
+      if (user) {
+        adStore.updateUser(user.id, { enabled: true });
+        output.push('');
+      } else {
+        output.push(`Enable-ADAccount : Cannot find an object with identity: '${username}'.`);
+      }
+    } else {
+      output.push('Usage: Enable-ADAccount -Identity <username>');
+    }
+  } else if (cmd === 'set-aduser') {
+    const adStore = useActiveDirectoryStore.getState();
+    const identityIndex = args.indexOf('-Identity');
+    if (identityIndex !== -1 && args[identityIndex + 1]) {
+      const username = args[identityIndex + 1];
+      const user = Object.values(adStore.users).find(u => u.sAMAccountName.toLowerCase() === username.toLowerCase());
+      if (user) {
+        const updates: any = {};
+        if (args.indexOf('-Title') !== -1) updates.title = args[args.indexOf('-Title') + 1].replace(/["']/g, "");
+        if (args.indexOf('-Department') !== -1) updates.department = args[args.indexOf('-Department') + 1].replace(/["']/g, "");
+        if (args.indexOf('-Company') !== -1) updates.company = args[args.indexOf('-Company') + 1].replace(/["']/g, "");
+        if (args.indexOf('-Office') !== -1) updates.office = args[args.indexOf('-Office') + 1].replace(/["']/g, "");
+        if (Object.keys(updates).length > 0) {
+          adStore.updateUser(user.id, updates);
+          output.push('');
+        } else {
+          output.push('Usage: Set-ADUser -Identity <username> -Title "Title" -Department "Dept"');
+        }
+      } else {
+        output.push(`Set-ADUser : Cannot find an object with identity: '${username}'.`);
+      }
+    } else {
+      output.push('Usage: Set-ADUser -Identity <username> -Title "Title"');
+    }
+  } else if (cmd === 'search-adaccount') {
+    const adStore = useActiveDirectoryStore.getState();
+    let results = Object.values(adStore.users);
+    
+    if (args.includes('-LockedOut')) {
+      results = results.filter(u => u.lockedOut);
+    }
+    if (args.includes('-AccountDisabled')) {
+      results = results.filter(u => !u.enabled);
+    }
+    if (!args.includes('-LockedOut') && !args.includes('-AccountDisabled')) {
+       output.push('Usage: Search-ADAccount [-LockedOut] [-AccountDisabled]');
+       return output;
+    }
+
+    if (results.length === 0) {
+      output.push('No accounts found matching criteria.');
+    } else {
+      results.forEach(u => {
+        output.push(`Name : ${u.name} (sAMAccountName: ${u.sAMAccountName})`);
+      });
+    }
   } else if (cmd === 'new-aduser') {
     const adStore = useActiveDirectoryStore.getState();
     const nameIndex = args.indexOf('-Name');

@@ -2,6 +2,7 @@ import { runOSPF } from '../logic/ospf';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import type { Device } from '../../types/device';
 import { simulatePing, tracePath, animatePath, resolveHostname } from '../logic/ping';
+import { useActiveDirectoryStore } from '../../store/useActiveDirectoryStore';
 
 export function executePcCommand(rawInput: string, device: Device): string[] {
   const input = rawInput.trim();
@@ -130,6 +131,133 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
       entries.forEach(([ip, mac]) => {
         output.push(`  ${ip.padEnd(21)} ${mac.padEnd(21)} dynamic`);
       });
+    }
+  } else if (cmd === 'get-aduser') {
+    const adStore = useActiveDirectoryStore.getState();
+    const username = args[1];
+    if (!username) {
+      output.push('Usage: Get-ADUser <username>');
+    } else {
+      const users = Object.values(adStore.users);
+      const user = users.find(u => u.sAMAccountName.toLowerCase() === username.toLowerCase() || u.name.toLowerCase() === username.toLowerCase());
+      if (user) {
+        output.push(`DistinguishedName : ${user.distinguishedName}`);
+        output.push(`Enabled           : ${user.enabled}`);
+        output.push(`GivenName         : ${user.firstName}`);
+        output.push(`LockedOut         : ${user.lockedOut}`);
+        output.push(`Name              : ${user.name}`);
+        output.push(`ObjectClass       : user`);
+        output.push(`SamAccountName    : ${user.sAMAccountName}`);
+        output.push(`UserPrincipalName : ${user.userPrincipalName}`);
+      } else {
+        output.push(`Get-ADUser : Cannot find an object with identity: '${username}' under: 'DC=corp,DC=local'.`);
+      }
+    }
+  } else if (cmd === 'unlock-adaccount') {
+    const adStore = useActiveDirectoryStore.getState();
+    const username = args[1];
+    if (!username) {
+      output.push('Usage: Unlock-ADAccount <username>');
+    } else {
+      const users = Object.values(adStore.users);
+      const user = users.find(u => u.sAMAccountName.toLowerCase() === username.toLowerCase() || u.name.toLowerCase() === username.toLowerCase());
+      if (user) {
+        adStore.updateUser(user.id, { lockedOut: false });
+        output.push('');
+      } else {
+        output.push(`Unlock-ADAccount : Cannot find an object with identity: '${username}' under: 'DC=corp,DC=local'.`);
+      }
+    }
+  } else if (cmd === 'new-aduser') {
+    const adStore = useActiveDirectoryStore.getState();
+    const nameIndex = args.indexOf('-Name');
+    if (nameIndex !== -1 && args[nameIndex + 1]) {
+      const newName = args[nameIndex + 1].replace(/["']/g, "");
+      const newId = `usr-${Math.random().toString(36).substr(2, 5)}`;
+      adStore.createUser({
+        id: newId,
+        name: newName,
+        type: 'User',
+        distinguishedName: `CN=${newName},OU=Users,DC=corp,DC=local`,
+        firstName: newName.split(' ')[0] || '',
+        lastName: newName.split(' ')[1] || '',
+        sAMAccountName: newName.replace(/\s+/g, '').toLowerCase(),
+        userPrincipalName: `${newName.replace(/\s+/g, '').toLowerCase()}@corp.local`,
+        enabled: true,
+        lockedOut: false,
+        passwordExpired: false,
+        groups: [],
+        parentOuId: 'ou-users'
+      });
+      output.push('');
+    } else {
+      output.push('Usage: New-ADUser -Name "John Doe"');
+    }
+  } else if (cmd === 'new-adgroup') {
+    const adStore = useActiveDirectoryStore.getState();
+    const nameIndex = args.indexOf('-Name');
+    if (nameIndex !== -1 && args[nameIndex + 1]) {
+      const newName = args[nameIndex + 1].replace(/["']/g, "");
+      const newId = `grp-${Math.random().toString(36).substr(2, 5)}`;
+      adStore.createGroup({
+        id: newId,
+        name: newName,
+        type: 'Group',
+        distinguishedName: `CN=${newName},OU=Users,DC=corp,DC=local`,
+        groupScope: 'Global',
+        groupType: 'Security',
+        members: [],
+        parentOuId: 'ou-users'
+      });
+      output.push('');
+    } else {
+      output.push('Usage: New-ADGroup -Name "Marketing"');
+    }
+  } else if (cmd === 'add-adgroupmember') {
+    const adStore = useActiveDirectoryStore.getState();
+    const identityIndex = args.indexOf('-Identity');
+    const memberIndex = args.indexOf('-Members');
+    if (identityIndex !== -1 && memberIndex !== -1 && args[identityIndex + 1] && args[memberIndex + 1]) {
+      const groupName = args[identityIndex + 1].replace(/["']/g, "");
+      const memberName = args[memberIndex + 1].replace(/["']/g, "");
+      
+      const group = Object.values(adStore.groups).find(g => g.name.toLowerCase() === groupName.toLowerCase());
+      const user = Object.values(adStore.users).find(u => u.sAMAccountName.toLowerCase() === memberName.toLowerCase());
+      
+      if (group && user) {
+        adStore.updateGroup(group.id, { members: [...new Set([...group.members, user.id])] });
+        output.push('');
+      } else {
+        output.push(`Add-ADGroupMember : Cannot find an object with identity: '${groupName}' or '${memberName}'.`);
+      }
+    } else {
+      output.push('Usage: Add-ADGroupMember -Identity "Group Name" -Members "username"');
+    }
+  } else if (cmd === 'add-computer') {
+    const domainIndex = args.indexOf('-DomainName');
+    if (domainIndex !== -1 && args[domainIndex + 1]) {
+      const domainName = args[domainIndex + 1];
+      const adStore = useActiveDirectoryStore.getState();
+      const domain = Object.values(adStore.domains).find(d => d.name.toLowerCase() === domainName.toLowerCase());
+      
+      if (domain) {
+        updateDevice(device.id, (d) => ({ ...d, domainJoined: domain.name }));
+        adStore.createComputer({
+          id: `comp-${device.id}`,
+          name: device.hostname,
+          type: 'Computer',
+          distinguishedName: `CN=${device.hostname},OU=Computers,DC=${domain.name.split('.')[0]},DC=${domain.name.split('.')[1]}`,
+          enabled: true,
+          operatingSystem: 'Windows 10 Pro',
+          operatingSystemVersion: '10.0',
+          parentOuId: 'ou-computers'
+        });
+        output.push(`WARNING: The changes will take effect after you restart the computer ${device.hostname}.`);
+      } else {
+        output.push(`Add-Computer : Cannot resolve domain ${domainName}.`);
+      }
+    } else {
+      output.push('Usage: Add-Computer -DomainName corp.local');
     }
   } else {
     output.push(`'${cmd}' is not recognized as an internal or external command.`);

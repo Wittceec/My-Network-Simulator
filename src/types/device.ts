@@ -71,6 +71,7 @@ export interface Device {
     console?: { password?: string; login?: boolean };
     vty?: { password?: string; login?: boolean };
   };
+  domainJoined?: string; // e.g. "corp.local"
 }
 
 export interface Link {

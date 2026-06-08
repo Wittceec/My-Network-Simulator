@@ -5,8 +5,11 @@ import Sidebar, { SidebarSheet } from './components/UI/Sidebar';
 import TerminalManager from './components/Terminal/TerminalManager';
 import LabSelector from './components/UI/LabSelector';
 import AzurePortal from './components/UI/AzurePortal';
+import JobPortal from './components/Job/JobPortal';
+import ActiveDirectoryDashboard from './components/ActiveDirectory/ActiveDirectoryDashboard';
 import { useNetworkStore } from './store/useNetworkStore';
-import { Menu, Plus, Hexagon, BookOpen, Cloud } from 'lucide-react';
+import { useJobStore } from './store/useJobStore';
+import { Menu, Plus, Hexagon, BookOpen, Cloud, Briefcase, Server } from 'lucide-react';
 
 class AppErrorBoundary extends React.Component<{children: any}, {error: any}> {
   constructor(props: any) { super(props); this.state = { error: null }; }
@@ -34,11 +37,15 @@ interface TopbarProps {
   onMenu: () => void;
   onOpenLibrary: () => void;
   onOpenAzure: () => void;
+  onOpenJobPortal: () => void;
+  onOpenAD: () => void;
 }
 
-function Topbar({ onMenu, onOpenLibrary, onOpenAzure }: TopbarProps) {
+function Topbar({ onMenu, onOpenLibrary, onOpenAzure, onOpenJobPortal, onOpenAD }: TopbarProps) {
   const isMobile = useIsMobile();
   const deviceCount = useNetworkStore((s) => Object.keys(s.devices).length);
+  const jobStore = useJobStore();
+  const openTicketsCount = Object.values(jobStore.tickets).filter(t => t.status === 'Open').length;
 
   return (
     <div className="topbar">
@@ -74,6 +81,12 @@ function Topbar({ onMenu, onOpenLibrary, onOpenAzure }: TopbarProps) {
           <button className="btn btn-ghost" onClick={onOpenAzure} style={{ marginLeft: 8, color: '#0078D4' }}>
             <Cloud size={16} /> Azure Portal
           </button>
+          <button className="btn btn-ghost" onClick={onOpenJobPortal} style={{ marginLeft: 8, color: jobStore.isClockedIn ? '#4ade80' : 'inherit' }}>
+            <Briefcase size={16} /> Job Portal {openTicketsCount > 0 && <span style={{background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: 10, fontSize: 10, marginLeft: 4}}>{openTicketsCount}</span>}
+          </button>
+          <button className="btn btn-ghost" onClick={onOpenAD} style={{ marginLeft: 8, color: '#f59e0b' }}>
+            <Server size={16} /> ADUC
+          </button>
         </>
       )}
       <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -91,6 +104,8 @@ function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [azureOpen, setAzureOpen] = useState(false);
+  const [jobPortalOpen, setJobPortalOpen] = useState(false);
+  const [adOpen, setAdOpen] = useState(false);
 
   return (
     <div
@@ -104,7 +119,13 @@ function App() {
       }}
     >
       <ReactFlowProvider>
-        <Topbar onMenu={() => setSheetOpen(true)} onOpenLibrary={() => setLibraryOpen(true)} onOpenAzure={() => setAzureOpen(true)} />
+        <Topbar 
+          onMenu={() => setSheetOpen(true)} 
+          onOpenLibrary={() => setLibraryOpen(true)} 
+          onOpenAzure={() => setAzureOpen(true)} 
+          onOpenJobPortal={() => setJobPortalOpen(true)}
+          onOpenAD={() => setAdOpen(true)} 
+        />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
           <Sidebar />
           <NetworkCanvas />
@@ -113,6 +134,8 @@ function App() {
         {sheetOpen && <SidebarSheet onClose={() => setSheetOpen(false)} />}
         {libraryOpen && <LabSelector onClose={() => setLibraryOpen(false)} />}
         {azureOpen && <AppErrorBoundary><AzurePortal onClose={() => setAzureOpen(false)} /></AppErrorBoundary>}
+        {jobPortalOpen && <AppErrorBoundary><JobPortal onClose={() => setJobPortalOpen(false)} /></AppErrorBoundary>}
+        {adOpen && <AppErrorBoundary><ActiveDirectoryDashboard onClose={() => setAdOpen(false)} /></AppErrorBoundary>}
       </ReactFlowProvider>
     </div>
   );

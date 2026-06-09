@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useJobStore } from '../../store/useJobStore';
-import { X, Search, Clock, CheckCircle, AlertCircle, MessageSquare, Briefcase } from 'lucide-react';
+import { X, Search, Clock, CheckCircle, AlertCircle, MessageSquare, Briefcase, Zap } from 'lucide-react';
 import type { Ticket, TicketStatus } from '../../types/job';
+import { forceGenerateTicket } from '../../core/simulators/TicketEngine';
 
 export default function ServiceDesk({ onClose }: { onClose: () => void }) {
   const jobStore = useJobStore();
@@ -47,7 +48,15 @@ export default function ServiceDesk({ onClose }: { onClose: () => void }) {
             <Briefcase size={24} color="#3b82f6" />
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>IT Service Desk</h2>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer' }}><X size={24} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <button 
+              onClick={forceGenerateTicket}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#eab308', color: '#000', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+            >
+              <Zap size={14} /> Simulate Incident
+            </button>
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer' }}><X size={24} /></button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

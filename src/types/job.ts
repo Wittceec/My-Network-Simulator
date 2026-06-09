@@ -1,4 +1,4 @@
-export type JobRole = 'HelpDesk' | 'SysAdmin' | 'NetAdmin' | 'CloudArchitect' | 'SecOps';
+export type JobRole = 'HelpDesk' | 'SysAdmin' | 'NetAdmin' | 'CloudArchitect' | 'SecOps' | 'OneManArmy';
 
 export type TicketSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
 export type TicketStatus = 'Open' | 'InProgress' | 'Resolved' | 'Closed';

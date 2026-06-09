@@ -6,7 +6,7 @@ import type { JobRole, Ticket, TicketSeverity } from '../../types/job';
 
 let ticketTimer: NodeJS.Timeout | null = null;
 
-const TICKETS_PER_ROLE: Record<JobRole, () => Ticket | null> = {
+const TICKETS_PER_ROLE: Partial<Record<JobRole, () => Ticket | null>> = {
   HelpDesk: generateHelpDeskTicket,
   SysAdmin: generateSysAdminTicket,
   NetAdmin: generateNetAdminTicket,
@@ -335,18 +335,33 @@ export function startTicketEngine() {
     const jobStore = useJobStore.getState();
     if (!jobStore.isClockedIn || !jobStore.currentRole) return;
     
-    // 30% chance every tick (e.g. 15s) to get a ticket
-    if (Math.random() < 0.3) {
-      const generator = TICKETS_PER_ROLE[jobStore.currentRole];
-      const newTicket = generator();
-      if (newTicket) {
-        jobStore.addTicket(newTicket);
-      }
+    // 40% chance every tick (e.g. 10s) to get a ticket
+    if (Math.random() < 0.4) {
+      forceGenerateTicket();
     }
     
     // Auto-verify open/in-progress tickets
     verifyTickets();
-  }, 15000); // Check every 15 seconds
+  }, 10000); // Check every 10 seconds
+}
+
+export function forceGenerateTicket() {
+  const jobStore = useJobStore.getState();
+  if (!jobStore.isClockedIn || !jobStore.currentRole) return;
+  
+  let roleToGenerate = jobStore.currentRole;
+  if (roleToGenerate === 'OneManArmy') {
+    const roles: JobRole[] = ['HelpDesk', 'SysAdmin', 'NetAdmin', 'CloudArchitect', 'SecOps'];
+    roleToGenerate = roles[Math.floor(Math.random() * roles.length)];
+  }
+
+  const generator = TICKETS_PER_ROLE[roleToGenerate];
+  if (generator) {
+    const newTicket = generator();
+    if (newTicket) {
+      jobStore.addTicket(newTicket);
+    }
+  }
 }
 
 export function stopTicketEngine() {

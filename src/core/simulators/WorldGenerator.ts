@@ -5,7 +5,7 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import { useServerStore } from '../../store/useServerStore';
 import { useGpoStore } from '../../store/useGpoStore';
 import { useJobStore } from '../../store/useJobStore';
-import { ADDomain, ADOrganizationalUnit, ADUser, ADComputer, ADGroup } from '../../types/ad';
+import type { ADDomain, ADOrganizationalUnit, ADUser, ADComputer, ADGroup } from '../../types/ad';
 
 function generateId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;

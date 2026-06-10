@@ -64,7 +64,9 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
       }
     }
   } else if (cmd === 'ipconfig') {
-    if (args[1] === 'dhcp') {
+    if (args[1] === '/renew' || args[1] === 'dhcp') {
+      output.push('Windows IP Configuration');
+      output.push('');
       output.push('Requesting IP address from DHCP server...');
       const state = useNetworkStore.getState();
       const routers = Object.values(state.devices).filter(d => d.type === 'router' && d.dhcpPools);
@@ -99,7 +101,21 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
       if (!assigned) {
         output.push('DHCP request failed. No DHCP server found.');
       }
-    } else if (args[1]) {
+    } else if (args[1] === '/release') {
+      updateDevice(device.id, (d) => ({
+        ...d,
+        interfaces: { ...d.interfaces, 'eth0': { id: 'eth0', isUp: true, mode: 'access', accessVlan: 1, shortName: 'eth0', macAddress: '0000.0000.0000' } },
+        routingTable: []
+      }));
+      output.push('Windows IP Configuration');
+      output.push('');
+      output.push('Ethernet adapter Local Area Connection:');
+      output.push('');
+      output.push('   Connection-specific DNS Suffix  . :');
+      output.push('   IPv4 Address. . . . . . . . . . . : 0.0.0.0');
+      output.push('   Subnet Mask . . . . . . . . . . . : 0.0.0.0');
+      output.push('   Default Gateway . . . . . . . . . :');
+    } else if (args[1] && args[1] !== '/all') {
       const ip = args[1];
       const mask = args[2] || '255.255.255.0';
       const gateway = args[3] || '0.0.0.0';
@@ -115,14 +131,54 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
       const ip = intf?.ipv4?.ip || '0.0.0.0';
       const mask = intf?.ipv4?.mask || '0.0.0.0';
       const gw = device.routingTable.find(r => r.network === '0.0.0.0')?.nextHopIp || '0.0.0.0';
+      const dnsStore = useDnsStore.getState();
+      const dnsServers = Object.keys(dnsStore.zones).length > 0 ? '10.0.0.10' : '8.8.8.8';
+      const mac = intf?.macAddress && intf.macAddress !== '0000.0000.0000' ? intf.macAddress : `0000.1111.${device.id.padStart(4, '0')}`;
       
+      output.push('Windows IP Configuration');
+      if (args[1] === '/all') {
+         output.push('');
+         output.push(`   Host Name . . . . . . . . . . . . : ${device.hostname}`);
+         output.push(`   Primary Dns Suffix  . . . . . . . : corp.local`);
+         output.push(`   Node Type . . . . . . . . . . . . : Hybrid`);
+         output.push(`   IP Routing Enabled. . . . . . . . : No`);
+         output.push(`   WINS Proxy Enabled. . . . . . . . : No`);
+      }
       output.push('');
       output.push('Ethernet adapter Local Area Connection:');
       output.push('');
+      if (args[1] === '/all') {
+         output.push(`   Description . . . . . . . . . . . : Intel(R) PRO/1000 MT Desktop Adapter`);
+         output.push(`   Physical Address. . . . . . . . . : ${mac}`);
+         output.push(`   DHCP Enabled. . . . . . . . . . . : ${gw !== '0.0.0.0' ? 'Yes' : 'No'}`);
+         output.push(`   Autoconfiguration Enabled . . . . : Yes`);
+      }
       output.push(`   IPv4 Address. . . . . . . . . . . : ${ip}`);
       output.push(`   Subnet Mask . . . . . . . . . . . : ${mask}`);
-      output.push(`   Default Gateway . . . . . . . . . : ${gw}`);
+      output.push(`   Default Gateway . . . . . . . . . : ${gw !== '0.0.0.0' ? gw : ''}`);
+      if (args[1] === '/all') {
+         output.push(`   DNS Servers . . . . . . . . . . . : ${dnsServers}`);
+      }
       output.push('');
+    }
+  } else if (cmd === 'nslookup') {
+    const targetHost = args[1];
+    if (!targetHost) {
+      output.push('Usage: nslookup <hostname>');
+    } else {
+      const dnsStore = useDnsStore.getState();
+      const hasDns = Object.keys(dnsStore.zones).length > 0;
+      output.push(`Server:  ${hasDns ? 'dc01.corp.local' : 'UnKnown'}`);
+      output.push(`Address:  ${hasDns ? '10.0.0.10' : '8.8.8.8'}`);
+      output.push('');
+      
+      const resolved = resolveHostname(targetHost);
+      if (resolved) {
+         output.push(`Name:    ${targetHost}`);
+         output.push(`Address:  ${resolved}`);
+      } else {
+         output.push(`*** UnKnown can't find ${targetHost}: Non-existent domain`);
+      }
     }
   } else if (cmd === 'arp' && args[1] === '-a') {
     const entries = Object.entries(device.arpTable || {});

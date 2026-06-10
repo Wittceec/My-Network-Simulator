@@ -153,6 +153,35 @@ export function executeCommand(
             const metric = r.protocol === 'ospf' ? '[110/2]' : '[1/0]';
             result.output.push(`${code}     ${r.network}/24 ${metric} via ${r.nextHopIp}`);
           });
+        } else if (isMatch(args[1], 'ip') && isMatch(args[2], 'ospf') && isMatch(args[3], 'neighbor')) {
+          result.output.push('Neighbor ID     Pri   State           Dead Time   Address         Interface');
+          const ospf = (device as any).ospf;
+          if (!ospf) {
+             // OSPF not running
+          } else {
+             const allLinks = Object.values(useNetworkStore.getState().links);
+             const allDevices = useNetworkStore.getState().devices;
+             allLinks.forEach(l => {
+                let neighbor: Device | undefined;
+                let localIntf = '';
+                let remoteIntf = '';
+                if (l.sourceDeviceId === device.id) {
+                   neighbor = allDevices[l.targetDeviceId];
+                   localIntf = l.sourceInterfaceId;
+                   remoteIntf = l.targetInterfaceId;
+                } else if (l.targetDeviceId === device.id) {
+                   neighbor = allDevices[l.sourceDeviceId];
+                   localIntf = l.targetInterfaceId;
+                   remoteIntf = l.sourceInterfaceId;
+                }
+                
+                if (neighbor && (neighbor as any).ospf) {
+                   const remoteIp = neighbor.interfaces[remoteIntf]?.ipv4?.ip || '0.0.0.0';
+                   const routerId = remoteIp; // simplifying router ID to interface IP
+                   result.output.push(`${routerId.padEnd(15)} 1     FULL/DR         00:00:39    ${remoteIp.padEnd(15)} ${localIntf}`);
+                }
+             });
+          }
         } else if (isMatch(args[1], 'mac') && (isMatch(args[2], 'address-table') || isMatch(args[2], 'address'))) {
           result.output.push('          Mac Address Table\n-------------------------------------------\nVlan    Mac Address       Type        Ports\n----    -----------       --------    -----');
           Object.entries(device.macAddressTable).forEach(([mac, data]: [string, any]) => {

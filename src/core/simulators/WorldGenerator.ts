@@ -141,6 +141,8 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   const gpoStore = useGpoStore.getState();
   gpoStore.createGpo({ id: generateId('gpo'), name: 'Default Domain Policy', status: 'Enabled', links: ['corp.local'], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'PasswordPolicy.MinLength': { id: 'pwd-len', category: 'Computer', path: 'Security Settings/Password Policy', name: 'Minimum password length', state: 'Disabled' }, 'PasswordPolicy.Complexity': { id: 'pwd-comp', category: 'Computer', path: 'Security Settings/Password Policy', name: 'Password must meet complexity requirements', state: 'Disabled' } } });
   gpoStore.createGpo({ id: generateId('gpo'), name: 'Disable USB Devices', status: 'Enabled', links: ['corp.local/Computers'], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'usb-deny': { id: 'usb-deny', category: 'Computer', path: 'System/Removable Storage', name: 'Deny all access', state: 'Enabled' } } });
+  gpoStore.createGpo({ id: generateId('gpo'), name: 'Map Public Drive', status: 'Enabled', links: [], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'map-drive-s': { id: 'map-drive-s', category: 'User', path: 'Preferences/Windows Settings/Drive Maps', name: 'Map S: to \\\\FILE01\\Public', state: 'Not Configured' } } });
+  gpoStore.createGpo({ id: generateId('gpo'), name: 'Deploy HR Printers', status: 'Enabled', links: [], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'printer-hr': { id: 'printer-hr', category: 'User', path: 'Preferences/Control Panel Settings/Printers', name: 'Deploy Printer \\\\PrintServer\\HR-M507', state: 'Not Configured' } } });
 
   // 3. Generate DNS
   const dns = useDnsStore.getState();
@@ -180,25 +182,61 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   const cloudVmId = generateId('vm');
   azure.createVM({ id: cloudVmId, name: 'vm-web-prod-01', location: 'East US', type: 'Microsoft.Compute/virtualMachines', size: 'Standard_D2s_v3', status: 'Running', os: 'Windows', subnetId: 'sub-1', tags: {}, resourceGroupName: 'rg-1' });
 
-  // Sync users to Azure (some, not all, to leave room for the sync ticket)
-  generatedUsers.slice(0, Math.floor(userCount * 0.8)).forEach(u => {
-    azure.createEntraUser({ id: generateId('eu'), displayName: u.displayName, userPrincipalName: u.userPrincipalName, assignedLicenses: ['Office 365 E3'], type: 'EntraUser' });
+  // Add Load Balancer
+  const lbId = generateId('lb');
+  azure.createLoadBalancer({ id: lbId, name: 'lb-web-prod', location: 'East US', type: 'Microsoft.Network/loadBalancers', sku: 'Standard', backendPool: [cloudVmId], rules: [{ name: 'HTTP', frontendPort: 80, backendPort: 80, protocol: 'Tcp' }], tags: {}, resourceGroupName: 'rg-1' });
+
+  // Add Storage Account
+  const saId = generateId('sa');
+  azure.createStorageAccount({ id: saId, name: 'stdiagprod001', location: 'East US', type: 'Microsoft.Storage/storageAccounts', performance: 'Standard', redundancy: 'LRS', accessTier: 'Hot', tags: {}, resourceGroupName: 'rg-1' });
+
+  // Add Route Table
+  const rtId = generateId('rt');
+  azure.createRouteTable({ id: rtId, name: 'rt-core-prod', location: 'East US', type: 'Microsoft.Network/routeTables', routes: [{ name: 'To-OnPrem', addressPrefix: '10.0.0.0/8', nextHopType: 'Internet' }], tags: {}, resourceGroupName: 'rg-1' }); // Internet hop is intentional bug
+
+  // Add App Service Plan & App Service
+  const aspId = generateId('asp');
+  azure.createAppServicePlan({ id: aspId, name: 'asp-linux-prod', location: 'East US', type: 'Microsoft.Web/serverfarms', sku: 'S1', os: 'Linux', tags: {}, resourceGroupName: 'rg-1' });
+  azure.createAppService({ id: generateId('app'), name: 'app-corp-portal', location: 'East US', type: 'Microsoft.Web/sites', appServicePlanId: aspId, runtimeStack: 'Node.js 18', tags: {}, resourceGroupName: 'rg-1' });
+
+  // Sync users to Azure and Role Assignments
+  generatedUsers.slice(0, Math.floor(userCount * 0.8)).forEach((u, idx) => {
+    const euId = generateId('eu');
+    azure.createEntraUser({ id: euId, displayName: u.displayName, userPrincipalName: u.userPrincipalName, assignedLicenses: ['Office 365 E3'], type: 'EntraUser' });
+    
+    // Assign contributor to first 2 users for a ticket
+    if (idx < 2) {
+      azure.createRoleAssignment({ id: generateId('ra'), principalId: euId, roleDefinition: 'Contributor', scope: 'rg-1', type: 'RoleAssignment' });
+    }
   });
 
-  // 6. Generate Network Topology (Basic for now)
+  // 6. Generate Network Topology
   const net = useNetworkStore.getState();
-  const routerId = generateId('router');
-  net.addDevice({ id: routerId, type: 'router', name: 'Core-Router-1', status: 'up', position: { x: 400, y: 100 }, interfaces: [] });
-  const switchId = generateId('switch');
-  net.addDevice({ id: switchId, type: 'switch', name: 'Access-SW-1', status: 'up', position: { x: 400, y: 300 }, interfaces: [] });
+  const r1Id = generateId('router');
+  const r2Id = generateId('router');
+  net.addDevice({ id: r1Id, type: 'router', name: 'Core-RTR-1', status: 'up', position: { x: 300, y: 100 }, interfaces: [] });
+  net.addDevice({ id: r2Id, type: 'router', name: 'Core-RTR-2', status: 'up', position: { x: 500, y: 100 }, interfaces: [] });
+
+  const sw1Id = generateId('switch');
+  const sw2Id = generateId('switch');
+  const sw3Id = generateId('switch');
+  net.addDevice({ id: sw1Id, type: 'switch', name: 'Access-SW-1', status: 'up', position: { x: 200, y: 300 }, interfaces: [] });
+  net.addDevice({ id: sw2Id, type: 'switch', name: 'Access-SW-2', status: 'up', position: { x: 400, y: 300 }, interfaces: [] });
+  net.addDevice({ id: sw3Id, type: 'switch', name: 'Access-SW-3', status: 'up', position: { x: 600, y: 300 }, interfaces: [] });
+
   const svrId = generateId('server');
-  net.addDevice({ id: svrId, type: 'server', name: 'DC01', status: 'up', position: { x: 200, y: 300 }, interfaces: [] });
+  net.addDevice({ id: svrId, type: 'server', name: 'DC01', status: 'up', position: { x: 200, y: 500 }, interfaces: [] });
   const svr2Id = generateId('server');
-  net.addDevice({ id: svr2Id, type: 'server', name: 'FILE01', status: 'up', position: { x: 600, y: 300 }, interfaces: [] });
+  net.addDevice({ id: svr2Id, type: 'server', name: 'FILE01', status: 'up', position: { x: 400, y: 500 }, interfaces: [] });
   
-  net.addLink({ id: generateId('link'), sourceId: routerId, targetId: switchId, status: 'up', bandwidth: 1000 });
-  net.addLink({ id: generateId('link'), sourceId: switchId, targetId: svrId, status: 'up', bandwidth: 1000 });
-  net.addLink({ id: generateId('link'), sourceId: switchId, targetId: svr2Id, status: 'up', bandwidth: 1000 });
+  // Cross connects
+  net.addLink({ id: generateId('link'), sourceId: r1Id, targetId: r2Id, status: 'up', bandwidth: 10000 });
+  net.addLink({ id: generateId('link'), sourceId: r1Id, targetId: sw1Id, status: 'up', bandwidth: 1000 });
+  net.addLink({ id: generateId('link'), sourceId: r1Id, targetId: sw2Id, status: 'down', bandwidth: 1000 }); // Intentional down link
+  net.addLink({ id: generateId('link'), sourceId: r2Id, targetId: sw3Id, status: 'up', bandwidth: 1000 });
+
+  net.addLink({ id: generateId('link'), sourceId: sw1Id, targetId: svrId, status: 'up', bandwidth: 1000 });
+  net.addLink({ id: generateId('link'), sourceId: sw2Id, targetId: svr2Id, status: 'up', bandwidth: 1000 });
 
   console.log('World Generation Complete.');
 }

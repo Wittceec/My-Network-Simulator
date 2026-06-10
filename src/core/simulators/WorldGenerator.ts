@@ -139,8 +139,8 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
 
   // 2. Generate GPOs
   const gpoStore = useGpoStore.getState();
-  gpoStore.createGPO({ id: generateId('gpo'), name: 'Default Domain Policy', status: 'Enabled', links: ['corp.local'], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'PasswordPolicy.MinLength': { id: 'pwd-len', category: 'Computer', path: 'Security Settings/Password Policy', name: 'Minimum password length', state: 'Disabled' }, 'PasswordPolicy.Complexity': { id: 'pwd-comp', category: 'Computer', path: 'Security Settings/Password Policy', name: 'Password must meet complexity requirements', state: 'Disabled' } } });
-  gpoStore.createGPO({ id: generateId('gpo'), name: 'Disable USB Devices', status: 'Enabled', links: ['corp.local/Computers'], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'usb-deny': { id: 'usb-deny', category: 'Computer', path: 'System/Removable Storage', name: 'Deny all access', state: 'Enabled' } } });
+  gpoStore.createGpo({ id: generateId('gpo'), name: 'Default Domain Policy', status: 'Enabled', links: ['corp.local'], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'PasswordPolicy.MinLength': { id: 'pwd-len', category: 'Computer', path: 'Security Settings/Password Policy', name: 'Minimum password length', state: 'Disabled' }, 'PasswordPolicy.Complexity': { id: 'pwd-comp', category: 'Computer', path: 'Security Settings/Password Policy', name: 'Password must meet complexity requirements', state: 'Disabled' } } });
+  gpoStore.createGpo({ id: generateId('gpo'), name: 'Disable USB Devices', status: 'Enabled', links: ['corp.local/Computers'], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'usb-deny': { id: 'usb-deny', category: 'Computer', path: 'System/Removable Storage', name: 'Deny all access', state: 'Enabled' } } });
 
   // 3. Generate DNS
   const dns = useDnsStore.getState();
@@ -169,20 +169,20 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   // 5. Generate Azure
   const azure = useAzureStore.getState();
   const vnetId = generateId('vnet');
-  azure.createVnet({ id: vnetId, name: 'vnet-core-prod', location: 'East US', addressSpace: '10.1.0.0/16', subnets: [{ name: 'default', addressPrefix: '10.1.0.0/24' }] });
+  azure.createVNet({ id: vnetId, name: 'vnet-core-prod', location: 'East US', type: 'Microsoft.Network/virtualNetworks', addressSpace: ['10.1.0.0/16'], subnets: [{ id: 'sub-1', name: 'default', addressPrefix: '10.1.0.0/24' }], peerings: [], tags: {}, resourceGroupName: 'rg-1' });
   
   const pipId = generateId('pip');
-  azure.createPublicIp({ id: pipId, name: 'pip-orphaned-01', location: 'East US', ipAddress: '203.0.113.45', sku: 'Standard', allocationMethod: 'Static' }); // Orphaned PIP for ticket
+  azure.createPublicIp({ id: pipId, name: 'pip-orphaned-01', location: 'East US', type: 'Microsoft.Network/publicIPAddresses', ipAddress: '203.0.113.45', sku: 'Standard', allocationMethod: 'Static', tags: {}, resourceGroupName: 'rg-1' }); // Orphaned PIP for ticket
 
   const nsgId = generateId('nsg');
-  azure.createNsg({ id: nsgId, name: 'nsg-web-prod', location: 'East US', rules: [{ name: 'Allow-RDP', priority: 100, direction: 'Inbound', access: 'Allow', protocol: 'TCP', sourcePortRange: '*', destinationPortRange: '3389', sourceAddressPrefix: '*', destinationAddressPrefix: '*' }] }); // Vulnerable NSG for ticket
+  azure.createNSG({ id: nsgId, name: 'nsg-web-prod', location: 'East US', type: 'Microsoft.Network/networkSecurityGroups', rules: [{ id: 'rule-1', name: 'Allow-RDP', priority: 100, direction: 'Inbound', access: 'Allow', protocol: 'TCP', sourcePortRange: '*', destinationPortRange: '3389', sourceAddressPrefix: '*', destinationAddressPrefix: '*' }], tags: {}, resourceGroupName: 'rg-1' }); // Vulnerable NSG for ticket
 
   const cloudVmId = generateId('vm');
-  azure.createVm({ id: cloudVmId, name: 'vm-web-prod-01', location: 'East US', size: 'Standard_D2s_v3', status: 'Running', publicIpId: undefined });
+  azure.createVM({ id: cloudVmId, name: 'vm-web-prod-01', location: 'East US', type: 'Microsoft.Compute/virtualMachines', size: 'Standard_D2s_v3', status: 'Running', os: 'Windows', subnetId: 'sub-1', tags: {}, resourceGroupName: 'rg-1' });
 
   // Sync users to Azure (some, not all, to leave room for the sync ticket)
   generatedUsers.slice(0, Math.floor(userCount * 0.8)).forEach(u => {
-    azure.createEntraUser({ id: generateId('eu'), displayName: u.displayName, userPrincipalName: u.userPrincipalName, assignedLicenses: ['Office 365 E3'] });
+    azure.createEntraUser({ id: generateId('eu'), displayName: u.displayName, userPrincipalName: u.userPrincipalName, assignedLicenses: ['Office 365 E3'], type: 'EntraUser' });
   });
 
   // 6. Generate Network Topology (Basic for now)

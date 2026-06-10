@@ -11,7 +11,7 @@ function generateId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-export function generateWorld(size: 'small' | 'enterprise') {
+export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   console.log(`Starting World Generation (${size})...`);
   
   // Clear any existing jobs/tickets
@@ -76,7 +76,10 @@ export function generateWorld(size: 'small' | 'enterprise') {
   });
 
   // Generate Users based on size
-  const userCount = size === 'small' ? 15 : 60;
+  let userCount = 15;
+  if (size === 'medium') userCount = 60;
+  if (size === 'enterprise') userCount = 200;
+  
   const departments = ['Finance', 'HR', 'Marketing', 'IT Support', 'Sales', 'Operations'];
   const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica'];
   const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez'];
@@ -136,26 +139,31 @@ export function generateWorld(size: 'small' | 'enterprise') {
 
   // 2. Generate GPOs
   const gpoStore = useGpoStore.getState();
-  gpoStore.createGPO({ id: generateId('gpo'), name: 'Default Domain Policy', enabled: true, linkedOUs: [], settings: { 'PasswordPolicy.MinLength': '0', 'PasswordPolicy.Complexity': 'false' } });
-  gpoStore.createGPO({ id: generateId('gpo'), name: 'Block USB Drives', enabled: false, linkedOUs: [], settings: { 'System.RemovableStorageAccess': 'DenyAll' } });
+  gpoStore.createGPO({ id: generateId('gpo'), name: 'Default Domain Policy', status: 'Enabled', links: ['corp.local'], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'PasswordPolicy.MinLength': { id: 'pwd-len', category: 'Computer', path: 'Security Settings/Password Policy', name: 'Minimum password length', state: 'Disabled' }, 'PasswordPolicy.Complexity': { id: 'pwd-comp', category: 'Computer', path: 'Security Settings/Password Policy', name: 'Password must meet complexity requirements', state: 'Disabled' } } });
+  gpoStore.createGPO({ id: generateId('gpo'), name: 'Disable USB Devices', status: 'Enabled', links: ['corp.local/Computers'], enforcedLinks: [], securityFiltering: ['Authenticated Users'], settings: { 'usb-deny': { id: 'usb-deny', category: 'Computer', path: 'System/Removable Storage', name: 'Deny all access', state: 'Enabled' } } });
 
   // 3. Generate DNS
   const dns = useDnsStore.getState();
   const zoneId = generateId('zone');
-  dns.createZone({ id: zoneId, name: 'corp.local', type: 'Forward', status: 'Running', records: {} });
-  dns.createRecord(zoneId, { id: generateId('rec'), name: 'dc01', type: 'A', data: '10.0.0.10', ttl: 3600 });
-  dns.createRecord(zoneId, { id: generateId('rec'), name: 'file01', type: 'A', data: '10.0.0.20', ttl: 3600 });
-  dns.createRecord(zoneId, { id: generateId('rec'), name: 'app-legacy', type: 'A', data: '10.0.0.30', ttl: 3600 });
-  dns.createRecord(zoneId, { id: generateId('rec'), name: 'mail', type: 'CNAME', data: 'exchange.corp.local', ttl: 3600 });
+  dns.createZone({ id: zoneId, name: 'corp.local', type: 'Forward', records: {} });
+  
+  // Reverse Zone
+  const revZoneId = generateId('zone');
+  dns.createZone({ id: revZoneId, name: '10.in-addr.arpa', type: 'Reverse', records: {} });
+  
+  dns.addRecord(zoneId, { id: generateId('rec'), name: 'dc01', type: 'A', data: '10.0.0.10', ttl: 3600 });
+  dns.addRecord(zoneId, { id: generateId('rec'), name: 'file01', type: 'A', data: '10.0.0.20', ttl: 3600 });
+  dns.addRecord(zoneId, { id: generateId('rec'), name: 'app-legacy', type: 'A', data: '10.0.0.30', ttl: 3600 });
+  dns.addRecord(zoneId, { id: generateId('rec'), name: 'mail', type: 'CNAME', data: 'exchange.corp.local', ttl: 3600 });
 
   // 4. Generate Server/Hyper-V/File Shares
   const srv = useServerStore.getState();
-  srv.createVM({ id: generateId('vm'), name: 'FILE01', state: 'Running', cpuUsage: 14, memoryAssigned: 8192, uptime: 86400000 });
-  srv.createVM({ id: generateId('vm'), name: 'APP-LEGACY', state: 'Running', cpuUsage: 5, memoryAssigned: 4096, uptime: 1000000 });
-  srv.createVM({ id: generateId('vm'), name: 'EXCHANGE01', state: 'Off', cpuUsage: 0, memoryAssigned: 16384, uptime: 0 });
+  srv.createVM({ id: generateId('vm'), name: 'SRV-01', state: 'Running', cpuUsage: 14, memoryAssigned: 8192, uptime: 86400000, checkpoints: [], virtualSwitch: 'vSwitch-External' });
+  srv.createVM({ id: generateId('vm'), name: 'APP-LEGACY', state: 'Running', cpuUsage: 5, memoryAssigned: 4096, uptime: 1000000, checkpoints: ['Before Upgrade'], virtualSwitch: 'vSwitch-External' });
+  srv.createVM({ id: generateId('vm'), name: 'EXCHANGE01', state: 'Off', cpuUsage: 0, memoryAssigned: 16384, uptime: 0, checkpoints: [], virtualSwitch: 'vSwitch-External' });
 
-  srv.createShare({ id: generateId('share'), name: 'Public', path: 'C:\\Shares\\Public', ntfsPermissions: { 'Domain Users': 'Modify', 'Domain Admins': 'FullControl' } });
-  srv.createShare({ id: generateId('share'), name: 'Finance', path: 'D:\\Shares\\Finance', ntfsPermissions: { 'Domain Users': 'Read', 'Finance': 'Modify', 'Domain Admins': 'FullControl' } }); // Intentional vulnerability for ticket
+  srv.createShare({ id: generateId('share'), name: 'Public', path: 'C:\\Shares\\Public', ntfsPermissions: { 'Domain Users': 'Modify', 'Domain Admins': 'FullControl' }, fileScreening: ['.mp3', '.avi'] });
+  srv.createShare({ id: generateId('share'), name: 'Finance', path: 'D:\\Shares\\Finance', ntfsPermissions: { 'Domain Users': 'Read', 'Finance': 'Modify', 'Domain Admins': 'FullControl' }, quotaLimit: 51200 }); // Intentional vulnerability for ticket
   srv.createShare({ id: generateId('share'), name: 'HR', path: 'D:\\Shares\\HR', ntfsPermissions: { 'Domain Admins': 'FullControl' } }); // Missing HR group for ticket
 
   // 5. Generate Azure

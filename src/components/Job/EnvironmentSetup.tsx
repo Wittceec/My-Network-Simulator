@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Server, Building, Globe } from 'lucide-react';
-import { buildEnvironment } from '../../core/simulators/EnvironmentBuilder';
+import { generateWorld } from '../../core/simulators/WorldGenerator';
 import { useJobStore } from '../../store/useJobStore';
 
 export default function EnvironmentSetup({ onClose }: { onClose: () => void }) {
@@ -11,7 +11,7 @@ export default function EnvironmentSetup({ onClose }: { onClose: () => void }) {
     setLoading(true);
     // Simulate generation time to make it feel impactful
     setTimeout(() => {
-      buildEnvironment(size);
+      generateWorld(size === 'Large' ? 'enterprise' : size.toLowerCase() as 'small' | 'medium');
       
       // Stop the ticket engine briefly so we start fresh, but only if they were clocked in
       const jobStore = useJobStore.getState();

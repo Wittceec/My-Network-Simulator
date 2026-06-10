@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import { useAzureStore } from '../../store/useAzureStore';
+import { useActiveDirectoryStore } from '../../store/useActiveDirectoryStore';
 import { Server, Monitor, HardDrive, Download, Upload, GripVertical } from 'lucide-react';
 
 const DEVICE_META = {
@@ -41,9 +42,22 @@ function SidebarBody({ onAfterAction }: SidebarBodyProps) {
     const newId = `${prefix}${idNumber}`;
 
     addDevice({
-      id: newId, hostname: newId, type: type, interfaces: {},
+      id: newId, hostname: newId, type: kind, interfaces: {},
       routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {},
     });
+
+    if (kind === 'pc') {
+      const adStore = useActiveDirectoryStore.getState();
+      const workstationsOu = Object.values(adStore.ous).find(ou => ou.name === 'Workstations');
+      if (workstationsOu) {
+        adStore.createComputer({
+          id: `comp-${newId.toLowerCase()}`, name: newId, type: 'Computer',
+          distinguishedName: `CN=${newId},OU=Workstations,DC=corp,DC=local`,
+          enabled: true, operatingSystem: 'Windows 11 Enterprise', operatingSystemVersion: '10.0',
+          parentOuId: workstationsOu.id
+        });
+      }
+    }
     
     if (onAfterAction) onAfterAction(); // Closes the mobile sheet
   };

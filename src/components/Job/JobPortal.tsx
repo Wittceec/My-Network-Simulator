@@ -9,7 +9,7 @@ interface JobPortalProps {
   onClose: () => void;
 }
 
-const ROLES: JobRole[] = ['HelpDesk', 'SysAdmin', 'NetAdmin', 'CloudArchitect', 'SecOps', 'OneManArmy'];
+const ROLES: JobRole[] = ['HelpDesk', 'SysAdmin', 'NetAdmin', 'CloudArchitect', 'SecOps', 'SRE', 'OneManArmy'];
 
 export default function JobPortal({ onClose }: JobPortalProps) {
   const jobStore = useJobStore();

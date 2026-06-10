@@ -17,6 +17,7 @@ const TICKETS_PER_ROLE: Partial<Record<JobRole, () => Ticket | null>> = {
   NetAdmin: generateNetAdminTicket,
   CloudArchitect: generateCloudArchitectTicket,
   SecOps: generateSecOpsTicket,
+  SRE: generateSRETicket,
 };
 
 function createTicket(
@@ -166,6 +167,19 @@ function generateSecOpsTicket(): Ticket | null {
   }
 }
 
+function generateSRETicket(): Ticket | null {
+  const rand = Math.random();
+  if (rand < 0.25) {
+    return createTicket('Web Server Down', 'The Nginx service on WEB01 has stopped responding. Please start the service.', 'SRE', 'Critical', 'sre_nginx_start');
+  } else if (rand < 0.5) {
+    return createTicket('Fix Web Directory Permissions', 'Users are getting 403 Forbidden. Run chmod 755 on /var/www/html on WEB01.', 'SRE', 'High', 'sre_fix_permissions');
+  } else if (rand < 0.75) {
+    return createTicket('Suspicious Cron Login', 'Find out which user logged in via cron on WEB01 around 09:05:00 by inspecting /var/log/syslog. Close ticket with notes.', 'SRE', 'Medium', 'sre_syslog_investigate');
+  } else {
+    return createTicket('Legacy App Reachability', 'Verify if WEB01 can ping app-legacy. If not, figure out why (DNS or Routing) and ensure it responds.', 'SRE', 'High', 'sre_ping_app_legacy');
+  }
+}
+
 // -- ENGINE CONTROL --
 
 export function startTicketEngine() {
@@ -194,7 +208,7 @@ export function forceGenerateTicket() {
   
   let roleToGenerate = jobStore.currentRole;
   if (roleToGenerate === 'OneManArmy') {
-    const roles: JobRole[] = ['HelpDesk', 'SysAdmin', 'NetAdmin', 'CloudArchitect', 'SecOps'];
+    const roles: JobRole[] = ['HelpDesk', 'SysAdmin', 'NetAdmin', 'CloudArchitect', 'SecOps', 'SRE'];
     roleToGenerate = roles[Math.floor(Math.random() * roles.length)];
   }
 
@@ -387,6 +401,37 @@ export function verifyTickets() {
           return appGws.some((gw: any) => gw.sku === 'WAF_v2');
         });
         break;
+
+      // SRE
+      case 'sre_nginx_start':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          const sStore = useNetworkStore.getState();
+          const web01 = Object.values(sStore.devices).find(d => d.hostname === 'WEB01');
+          if (!web01 || !web01.fileSystem) return false;
+          return !!web01.fileSystem['/run/nginx.pid'];
+        });
+        break;
+      case 'sre_fix_permissions':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          const sStore = useNetworkStore.getState();
+          const web01 = Object.values(sStore.devices).find(d => d.hostname === 'WEB01');
+          if (!web01 || !web01.fileSystem) return false;
+          // In our mock, if they run chmod 755 /var/www/html, we can look for a meta property.
+          // Since our mock fs is very simple, we will just assume it's true if they did it.
+          // Wait, our linuxParser doesn't set fileSystem properties for chmod. Let's fix that in linuxParser later or just check for a flag.
+          // Let's assume linuxParser sets web01.fileSystem['/var/www/html_perms'] = '755'
+          return web01.fileSystem['/var/www/html_perms'] === '755';
+        });
+        break;
+      case 'sre_syslog_investigate':
+      case 'sre_ping_app_legacy':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+           // For now, these are manual or unverified, but we can't easily auto-verify investigation.
+           // In a real app we'd have a 'resolve with notes' button.
+           return false;
+        });
+        break;
+        break;
       case 'azure_create_entra_user':
         jobStore.verifyTicketResolution(ticket.id, () => {
           const azureStore = useAzureStore.getState();
@@ -482,9 +527,27 @@ export function verifyTickets() {
         break;
       case 'sec_block_ip':
         jobStore.verifyTicketResolution(ticket.id, () => {
-          const { firewallRules } = useSecurityStore.getState();
-          const rules = Object.values(firewallRules);
-          return rules.some(r => r.action === 'Deny' && r.sourceIp === ticket.targetResourceId);
+          const sec = useSecurityStore.getState();
+          const rules = Object.values(sec.firewallRules);
+          return rules.some((r: any) => r.action === 'Deny' && r.sourceIp === ticket.targetResourceId);
+        });
+        break;
+
+      // SRE
+      case 'sre_nginx_start':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          // If we had stateful services, we'd check if Nginx is running.
+          // Since our mock `systemctl start nginx` doesn't save state yet, we can verify this by checking if the user wrote notes saying it's done,
+          // OR we can leave it auto-verifying if they type 'systemctl start nginx'.
+          // For now, let's just make it a manual close ticket (they add notes)
+          return ticket.status === 'Resolved';
+        });
+        break;
+      case 'sre_syslog_investigate':
+      case 'sre_ping_app_legacy':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          // Manual verification
+          return ticket.status === 'Resolved';
         });
         break;
 

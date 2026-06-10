@@ -1,4 +1,4 @@
-export type DeviceType = 'router' | 'switch' | 'pc';
+export type DeviceType = 'router' | 'switch' | 'pc' | 'server';
 export type PortMode = 'access' | 'trunk' | 'routed';
 export type RouteProtocol = 'connected' | 'static' | 'ospf';
 
@@ -72,6 +72,8 @@ export interface Device {
     vty?: { password?: string; login?: boolean };
   };
   domainJoined?: string; // e.g. "corp.local"
+  os?: 'linux' | 'windows';
+  fileSystem?: Record<string, string | Record<string, any>>; // Simplified mock filesystem
 }
 
 export interface Link {

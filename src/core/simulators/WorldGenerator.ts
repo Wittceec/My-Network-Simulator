@@ -239,9 +239,28 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   net.addDevice({ id: sw3Id, type: 'switch', name: 'Access-SW-3', status: 'up', position: { x: 600, y: 300 }, interfaces: [] });
 
   const svrId = generateId('server');
-  net.addDevice({ id: svrId, type: 'server', name: 'DC01', status: 'up', position: { x: 200, y: 500 }, interfaces: [] });
+  net.addDevice({ 
+    id: svrId, type: 'server', hostname: 'DC01', powerOn: true,
+    interfaces: {
+      'eth0': { id: 'eth0', shortName: 'eth0', isUp: true, macAddress: '00:11:22:33:44:01', ipv4: { ip: '10.0.0.10', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 }
+    },
+    routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {}
+  } as any);
+
   const svr2Id = generateId('server');
-  net.addDevice({ id: svr2Id, type: 'server', name: 'FILE01', status: 'up', position: { x: 400, y: 500 }, interfaces: [] });
+  net.addDevice({ 
+    id: svr2Id, type: 'server', hostname: 'WEB01', powerOn: true, os: 'linux',
+    interfaces: {
+      'eth0': { id: 'eth0', shortName: 'eth0', isUp: true, macAddress: '00:11:22:33:44:02', ipv4: { ip: '10.0.0.20', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 }
+    },
+    routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {},
+    fileSystem: {
+      '/var/www/html': {},
+      '/var/www/html/index.html': '<html><body><h1>Welcome to NGINX</h1></body></html>',
+      '/etc/nginx/nginx.conf': 'worker_processes 1;\nevents { worker_connections 1024; }\nhttp { server { listen 80; root /var/www/html; } }',
+      '/var/log/syslog': 'Jun 10 09:00:00 WEB01 systemd[1]: Started Nginx Web Server.\nJun 10 09:01:23 WEB01 kernel: [  100.203020] eth0: link up\nJun 10 09:05:00 WEB01 CRON[1234]: pam_unix(cron:session): session opened for user root'
+    }
+  } as any);
   
   // Cross connects
   net.addLink({ id: generateId('link'), sourceId: r1Id, targetId: r2Id, status: 'up', bandwidth: 10000 });

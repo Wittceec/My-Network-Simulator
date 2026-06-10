@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useActiveDirectoryStore } from '../../store/useActiveDirectoryStore';
-import { Users, Server, HardDrive, Shield, Lock, X, Folder, File, ChevronRight, ChevronDown, CheckSquare, Square } from 'lucide-react';
+import { Users, Server, HardDrive, Shield, Lock, X, Folder, File, ChevronRight, ChevronDown, CheckSquare, Square, Minus } from 'lucide-react';
 import type { ADUser, ADComputer, ADOrganizationalUnit, ADGroup, ADDomain } from '../../types/ad';
 
 interface ActiveDirectoryDashboardProps {
@@ -81,81 +81,101 @@ export default function ActiveDirectoryDashboard({ onClose }: ActiveDirectoryDas
       zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div className="modal-content" onClick={e => { e.stopPropagation(); closeMenu(); }} style={{
-        background: '#ece9d8', // Classic Windows XP/2003 gray
-        color: '#000',
-        width: 900, maxWidth: '95vw', height: 600, maxHeight: '95vh',
+        background: '#ffffff', // Modern Windows 10/11 MMC background
+        color: '#000000',
+        width: 1000, maxWidth: '95vw', height: 700, maxHeight: '95vh',
         display: 'flex', flexDirection: 'column',
-        boxShadow: '2px 2px 10px rgba(0,0,0,0.5)',
-        border: '1px solid #0054e3',
-        fontFamily: '"Tahoma", "Segoe UI", sans-serif'
+        boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+        border: '1px solid #999',
+        borderRadius: 8,
+        overflow: 'hidden',
+        fontFamily: '"Segoe UI", sans-serif'
       }}>
         {/* Title Bar */}
         <div style={{ 
-          background: 'linear-gradient(to right, #0058e6, #3a93ff)', 
-          color: 'white', padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          borderBottom: '1px solid #0054e3', fontSize: 13, fontWeight: 'bold'
+          background: '#ffffff', 
+          color: '#000', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          fontSize: 12, userSelect: 'none'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Server size={14} color="#fff" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Server size={14} color="#0078d4" />
             Active Directory Users and Computers
           </div>
-          <button style={{ background: '#e81123', color: '#fff', border: 'none', width: 24, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-            <X size={14} />
-          </button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <span style={{ cursor: 'pointer', color: '#666' }}><Minus size={14}/></span>
+            <span style={{ cursor: 'pointer', color: '#666' }}><Square size={12}/></span>
+            <span style={{ cursor: 'pointer', color: '#e81123' }} onClick={onClose}><X size={16}/></span>
+          </div>
         </div>
 
-        {/* Toolbar */}
-        <div style={{ background: '#f5f5f5', borderBottom: '1px solid #ccc', padding: '4px 8px', display: 'flex', gap: 16, fontSize: 12 }}>
-          <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><File size={14}/> File</div>
-          <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>Action</div>
-          <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>View</div>
-          <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>Help</div>
+        {/* Menu Bar */}
+        <div style={{ background: '#ffffff', padding: '2px 8px', display: 'flex', gap: 16, fontSize: 12, borderBottom: '1px solid #e0e0e0', color: '#333' }}>
+          <div style={{ cursor: 'pointer', padding: '4px 6px' }}>File</div>
+          <div style={{ cursor: 'pointer', padding: '4px 6px' }}>Action</div>
+          <div style={{ cursor: 'pointer', padding: '4px 6px' }}>View</div>
+          <div style={{ cursor: 'pointer', padding: '4px 6px' }}>Help</div>
         </div>
 
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#fff', margin: 2, border: '1px solid #7f9db9' }}>
+        {/* Action Toolbar (Classic MMC style) */}
+        <div style={{ background: '#f5f6f7', padding: '4px 8px', display: 'flex', gap: 12, borderBottom: '1px solid #e0e0e0', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 4, borderRight: '1px solid #ccc', paddingRight: 8 }}>
+             <button style={{ background: 'none', border: 'none', cursor: 'pointer' }}><ChevronRight size={16} color="#ccc" style={{ transform: 'rotate(180deg)' }}/></button>
+             <button style={{ background: 'none', border: 'none', cursor: 'pointer' }}><ChevronRight size={16} color="#ccc"/></button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, borderRight: '1px solid #ccc', paddingRight: 8 }}>
+             <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={handleCreateUser} title="Create a new user in the current container"><Users size={16} color="#0078d4"/></button>
+             <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} title="Create a new group in the current container"><Shield size={16} color="#10b981"/></button>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+             <button style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => { if(selectedOuId) setPropertiesModal({ userId: selectedOuId }) }} title="Properties"><File size={16} color="#666"/></button>
+          </div>
+        </div>
+
+        {/* Split Pane */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#ffffff' }}>
           
           {/* LEFT TREE */}
-          <div style={{ width: 250, borderRight: '1px solid #ccc', overflowY: 'auto', padding: 4 }}>
+          <div style={{ width: 280, borderRight: '1px solid #e0e0e0', overflowY: 'auto', padding: '8px 4px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: 2 }}>
-                <div onClick={(e) => { e.stopPropagation(); toggleNode('root'); }} style={{ width: 12, display: 'flex', justifyContent: 'center' }}>
-                  {expandedNodes['root'] ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: '2px 0' }}>
+                <div onClick={(e) => { e.stopPropagation(); toggleNode('root'); }} style={{ width: 16, display: 'flex', justifyContent: 'center' }}>
+                  {expandedNodes['root'] ? <ChevronDown size={14} color="#666"/> : <ChevronRight size={14} color="#666"/>}
                 </div>
                 <div 
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: selectedOuId === null ? '#316ac5' : 'transparent', color: selectedOuId === null ? '#fff' : '#000', padding: '2px 4px', flex: 1 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: selectedOuId === null ? '#cce8ff' : 'transparent', color: '#000', padding: '3px 6px', borderRadius: 2, flex: 1, border: selectedOuId === null ? '1px solid #99d1ff' : '1px solid transparent' }}
                   onClick={() => setSelectedOuId(null)}
                   onContextMenu={(e) => handleRightClick(e, null, 'root')}
                 >
-                  <Server size={14} color={selectedOuId === null ? '#fff' : "#f59e0b"} />
+                  <Server size={16} color="#f59e0b" />
                   Active Directory Users and Computers [{primaryDomain.name}]
                 </div>
               </div>
 
               {expandedNodes['root'] && (
-                <div style={{ paddingLeft: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: 2 }}>
-                    <div onClick={(e) => { e.stopPropagation(); toggleNode('dom'); }} style={{ width: 12, display: 'flex', justifyContent: 'center' }}>
-                      {expandedNodes['dom'] ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
+                <div style={{ paddingLeft: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: '2px 0' }}>
+                    <div onClick={(e) => { e.stopPropagation(); toggleNode('dom'); }} style={{ width: 16, display: 'flex', justifyContent: 'center' }}>
+                      {expandedNodes['dom'] ? <ChevronDown size={14} color="#666"/> : <ChevronRight size={14} color="#666"/>}
                     </div>
                     <div 
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, background: selectedOuId === 'dom' ? '#316ac5' : 'transparent', color: selectedOuId === 'dom' ? '#fff' : '#000', padding: '2px 4px', flex: 1 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, background: selectedOuId === 'dom' ? '#cce8ff' : 'transparent', color: '#000', padding: '3px 6px', borderRadius: 2, flex: 1, border: selectedOuId === 'dom' ? '1px solid #99d1ff' : '1px solid transparent' }}
                       onClick={() => setSelectedOuId('dom')}
                     >
-                      <Folder size={14} color={selectedOuId === 'dom' ? '#fff' : "#f59e0b"} />
+                      <Folder size={16} color="#f59e0b" fill="#f59e0b" style={{ opacity: 0.8 }} />
                       {primaryDomain.name}
                     </div>
                   </div>
 
                   {expandedNodes['dom'] && ous.map(ou => (
-                    <div key={ou.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: 2, paddingLeft: 16 }}>
-                      <div style={{ width: 12 }}></div>
+                    <div key={ou.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: '2px 0', paddingLeft: 20 }}>
+                      <div style={{ width: 16 }}></div>
                       <div 
-                        style={{ display: 'flex', alignItems: 'center', gap: 4, background: selectedOuId === ou.id ? '#316ac5' : 'transparent', color: selectedOuId === ou.id ? '#fff' : '#000', padding: '2px 4px', flex: 1 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: selectedOuId === ou.id ? '#cce8ff' : 'transparent', color: '#000', padding: '3px 6px', borderRadius: 2, flex: 1, border: selectedOuId === ou.id ? '1px solid #99d1ff' : '1px solid transparent' }}
                         onClick={() => setSelectedOuId(ou.id)}
                         onContextMenu={(e) => handleRightClick(e, ou.id, 'ou')}
                       >
-                        <Folder size={14} color={selectedOuId === ou.id ? '#fff' : "#f59e0b"} fill={selectedOuId === ou.id ? '#fff' : "#f59e0b"} />
+                        <Folder size={16} color="#f59e0b" fill="#f59e0b" style={{ opacity: 0.8 }} />
                         {ou.name}
                       </div>
                     </div>
@@ -166,13 +186,13 @@ export default function ActiveDirectoryDashboard({ onClose }: ActiveDirectoryDas
           </div>
 
           {/* RIGHT LIST */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ flex: 1, overflowY: 'auto', background: '#ffffff' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead style={{ background: '#ece9d8', borderBottom: '1px solid #ccc', textAlign: 'left' }}>
+              <thead style={{ background: '#ffffff', textAlign: 'left' }}>
                 <tr>
-                  <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>Name</th>
-                  <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>Type</th>
-                  <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>Description</th>
+                  <th style={{ padding: '6px 12px', fontWeight: 'normal', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', color: '#666' }}>Name</th>
+                  <th style={{ padding: '6px 12px', fontWeight: 'normal', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', color: '#666' }}>Type</th>
+                  <th style={{ padding: '6px 12px', fontWeight: 'normal', borderBottom: '1px solid #e0e0e0', color: '#666' }}>Description</th>
                 </tr>
               </thead>
               <tbody>
@@ -183,32 +203,32 @@ export default function ActiveDirectoryDashboard({ onClose }: ActiveDirectoryDas
                     style={{ cursor: 'default' }}
                     className="ad-row"
                   >
-                    <td style={{ padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
-                      <Users size={14} color="#0054e3" /> 
-                      {!u.enabled && <div style={{ position: 'absolute', left: 12, top: 8, background: '#fff', borderRadius: '50%' }}><ChevronDown size={10} color="#000" /></div>}
-                      {u.name} 
+                    <td style={{ padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+                      <Users size={16} color="#0078d4" fill="#e0f2fe" /> 
+                      {!u.enabled && <div style={{ position: 'absolute', left: 16, top: 10, background: '#fff', borderRadius: '50%' }}><ChevronDown size={10} color="#000" /></div>}
+                      <span>{u.name}</span>
                       {u.lockedOut && <Lock size={12} color="#e81123" title="Locked Out"/>}
                     </td>
-                    <td style={{ padding: '2px 6px' }}>User</td>
-                    <td style={{ padding: '2px 6px' }}>{u.description || u.title || ''}</td>
+                    <td style={{ padding: '4px 12px', color: '#333' }}>User</td>
+                    <td style={{ padding: '4px 12px', color: '#333' }}>{u.description || u.title || ''}</td>
                   </tr>
                 ))}
                 {filteredComputers.map(c => (
-                  <tr key={c.id}>
-                    <td style={{ padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <HardDrive size={14} color="#0054e3" /> {c.name}
+                  <tr key={c.id} className="ad-row">
+                    <td style={{ padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <HardDrive size={16} color="#0078d4" /> <span>{c.name}</span>
                     </td>
-                    <td style={{ padding: '2px 6px' }}>Computer</td>
-                    <td style={{ padding: '2px 6px' }}></td>
+                    <td style={{ padding: '4px 12px', color: '#333' }}>Computer</td>
+                    <td style={{ padding: '4px 12px', color: '#333' }}></td>
                   </tr>
                 ))}
                 {filteredGroups.map(g => (
-                  <tr key={g.id}>
-                    <td style={{ padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Shield size={14} color="#10b981" /> {g.name}
+                  <tr key={g.id} className="ad-row">
+                    <td style={{ padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Shield size={16} color="#10b981" /> <span>{g.name}</span>
                     </td>
-                    <td style={{ padding: '2px 6px' }}>Security Group</td>
-                    <td style={{ padding: '2px 6px' }}></td>
+                    <td style={{ padding: '4px 12px', color: '#333' }}>Security Group</td>
+                    <td style={{ padding: '4px 12px', color: '#333' }}></td>
                   </tr>
                 ))}
               </tbody>
@@ -217,7 +237,7 @@ export default function ActiveDirectoryDashboard({ onClose }: ActiveDirectoryDas
         </div>
 
         {/* Status Bar */}
-        <div style={{ background: '#ece9d8', padding: '2px 8px', fontSize: 11, borderTop: '1px solid #ccc' }}>
+        <div style={{ background: '#f5f6f7', padding: '4px 12px', fontSize: 11, borderTop: '1px solid #e0e0e0', color: '#666' }}>
           {filteredUsers.length + filteredComputers.length + filteredGroups.length} objects
         </div>
       </div>
@@ -226,13 +246,13 @@ export default function ActiveDirectoryDashboard({ onClose }: ActiveDirectoryDas
       {contextMenu && (
         <div style={{
           position: 'absolute', top: contextMenu.y, left: contextMenu.x,
-          background: '#ece9d8', border: '1px solid #999', boxShadow: '2px 2px 5px rgba(0,0,0,0.3)',
-          padding: 2, zIndex: 10000, fontSize: 12, minWidth: 150, fontFamily: 'Tahoma'
+          background: '#ffffff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          padding: '4px 0', zIndex: 10000, fontSize: 12, minWidth: 200, fontFamily: '"Segoe UI", sans-serif', borderRadius: 4
         }} onClick={e => e.stopPropagation()}>
           {(contextMenu.type === 'ou' || contextMenu.type === 'root') && (
             <>
-              <div className="menu-item" onClick={handleCreateUser} style={{ padding: '4px 24px', cursor: 'pointer' }}>New User...</div>
-              <div className="menu-item" style={{ padding: '4px 24px', cursor: 'pointer' }}>New Group...</div>
+              <div className="menu-item" onClick={handleCreateUser} style={{ padding: '6px 24px', cursor: 'pointer' }}>New User...</div>
+              <div className="menu-item" style={{ padding: '6px 24px', cursor: 'pointer' }}>New Group...</div>
             </>
           )}
           {contextMenu.type === 'user' && (
@@ -241,22 +261,22 @@ export default function ActiveDirectoryDashboard({ onClose }: ActiveDirectoryDas
                 adStore.updateUser(contextMenu.targetId!, { lockedOut: false, passwordExpired: false });
                 alert("Password reset successfully.");
                 closeMenu();
-              }} style={{ padding: '4px 24px', cursor: 'pointer' }}>Reset Password...</div>
+              }} style={{ padding: '6px 24px', cursor: 'pointer' }}>Reset Password...</div>
               
               <div className="menu-item" onClick={() => {
                 const u = users.find(x => x.id === contextMenu.targetId);
                 adStore.updateUser(contextMenu.targetId!, { enabled: !u?.enabled });
                 closeMenu();
-              }} style={{ padding: '4px 24px', cursor: 'pointer' }}>
+              }} style={{ padding: '6px 24px', cursor: 'pointer' }}>
                 {users.find(x => x.id === contextMenu.targetId)?.enabled ? 'Disable Account' : 'Enable Account'}
               </div>
 
-              <div style={{ borderTop: '1px solid #ccc', margin: '2px 0' }}></div>
+              <div style={{ borderTop: '1px solid #e0e0e0', margin: '4px 0' }}></div>
 
               <div className="menu-item" onClick={() => {
                 setPropertiesModal({ userId: contextMenu.targetId! });
                 closeMenu();
-              }} style={{ padding: '4px 24px', cursor: 'pointer', fontWeight: 'bold' }}>Properties</div>
+              }} style={{ padding: '6px 24px', cursor: 'pointer' }}>Properties</div>
             </>
           )}
         </div>
@@ -271,8 +291,8 @@ export default function ActiveDirectoryDashboard({ onClose }: ActiveDirectoryDas
       )}
       
       <style>{`
-        .ad-row:hover { background: #e5f3ff; }
-        .menu-item:hover { background: #316ac5; color: white; }
+        .ad-row:hover { background: #f0f8ff; }
+        .menu-item:hover { background: #0078d4; color: white; }
       `}</style>
     </div>
   );
@@ -305,27 +325,27 @@ function PropertiesDialog({ userId, onClose }: { userId: string, onClose: () => 
       zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{
-        background: '#ece9d8', color: '#000',
-        width: 420, height: 480, display: 'flex', flexDirection: 'column',
-        boxShadow: '2px 2px 10px rgba(0,0,0,0.5)', border: '1px solid #0054e3',
-        fontFamily: '"Tahoma", "Segoe UI", sans-serif', fontSize: 12
+        background: '#ffffff', color: '#000000',
+        width: 450, height: 500, display: 'flex', flexDirection: 'column',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #999', borderRadius: 6,
+        fontFamily: '"Segoe UI", sans-serif', fontSize: 12, overflow: 'hidden'
       }}>
         <div style={{ 
-          background: 'linear-gradient(to right, #0058e6, #3a93ff)', color: 'white', padding: '4px 8px', 
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, fontWeight: 'bold'
+          background: '#ffffff', color: '#000', padding: '8px 12px', 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, userSelect: 'none'
         }}>
           <span>{user.name} Properties</span>
-          <button style={{ background: '#e81123', color: '#fff', border: 'none', width: 24, height: 20, cursor: 'pointer' }} onClick={onClose}><X size={14} /></button>
+          <button style={{ background: 'none', color: '#e81123', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}><X size={16} /></button>
         </div>
 
         {/* TABS */}
-        <div style={{ display: 'flex', padding: '8px 8px 0 8px', borderBottom: '1px solid #ccc', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', padding: '8px 12px 0 12px', borderBottom: '1px solid #d1d5db', flexWrap: 'wrap', gap: 2 }}>
           {tabs.map(t => (
             <div key={t} onClick={() => setActiveTab(t)} style={{
-              padding: '4px 8px', border: '1px solid #ccc', borderBottom: activeTab === t ? 'none' : '1px solid #ccc',
-              background: activeTab === t ? '#fff' : '#f5f5f5', cursor: 'pointer',
-              marginTop: activeTab === t ? 2 : 4, borderTopLeftRadius: 3, borderTopRightRadius: 3,
-              position: 'relative', zIndex: activeTab === t ? 2 : 1, marginBottom: -1
+              padding: '6px 12px', border: '1px solid #d1d5db', borderBottom: activeTab === t ? '1px solid #ffffff' : '1px solid #d1d5db',
+              background: activeTab === t ? '#ffffff' : '#f3f4f6', cursor: 'pointer',
+              marginTop: activeTab === t ? 2 : 4, borderTopLeftRadius: 4, borderTopRightRadius: 4,
+              position: 'relative', zIndex: activeTab === t ? 2 : 1, marginBottom: -1, color: activeTab === t ? '#000' : '#4b5563'
             }}>
               {t}
             </div>
@@ -333,12 +353,12 @@ function PropertiesDialog({ userId, onClose }: { userId: string, onClose: () => 
         </div>
 
         {/* TAB CONTENT */}
-        <div style={{ flex: 1, background: '#fff', border: '1px solid #ccc', borderTop: 'none', margin: '0 8px', padding: 16 }}>
+        <div style={{ flex: 1, background: '#ffffff', margin: '0 12px', padding: '16px 8px', overflowY: 'auto' }}>
           
           {activeTab === 'General' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Users size={32} color="#0054e3" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <Users size={48} color="#0078d4" fill="#e0f2fe" />
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 4 }}>
                   <div style={{ display: 'flex' }}><span style={{ width: 80 }}>First name:</span><input className="ad-input" value={formData.firstName || ''} onChange={e => setFormData({...formData, firstName: e.target.value})} /></div>
                   <div style={{ display: 'flex' }}><span style={{ width: 80 }}>Last name:</span><input className="ad-input" value={formData.lastName || ''} onChange={e => setFormData({...formData, lastName: e.target.value})} /></div>
@@ -449,16 +469,16 @@ function PropertiesDialog({ userId, onClose }: { userId: string, onClose: () => 
         </div>
 
         {/* BUTTONS */}
-        <div style={{ padding: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn" style={{ width: 80, fontSize: 12, padding: '4px 0' }} onClick={handleSave}>OK</button>
-          <button className="btn" style={{ width: 80, fontSize: 12, padding: '4px 0' }} onClick={onClose}>Cancel</button>
-          <button className="btn" style={{ width: 80, fontSize: 12, padding: '4px 0' }} onClick={handleApply}>Apply</button>
+        <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end', gap: 8, background: '#f3f4f6', borderTop: '1px solid #e5e7eb' }}>
+          <button className="btn" style={{ width: 80, fontSize: 12, padding: '6px 0', background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }} onClick={handleSave}>OK</button>
+          <button className="btn" style={{ width: 80, fontSize: 12, padding: '6px 0', background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }} onClick={onClose}>Cancel</button>
+          <button className="btn" style={{ width: 80, fontSize: 12, padding: '6px 0', background: '#fff', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }} onClick={handleApply}>Apply</button>
         </div>
       </div>
       
       <style>{`
-        .ad-input { border: 1px solid #7f9db9; padding: 2px 4px; flex: 1; outline: none; }
-        .ad-input:focus { border-color: #316ac5; }
+        .ad-input { border: 1px solid #d1d5db; padding: 4px 6px; flex: 1; outline: none; border-radius: 2px; }
+        .ad-input:focus { border-color: #0078d4; box-shadow: 0 0 0 1px #0078d4; }
       `}</style>
     </div>
   );

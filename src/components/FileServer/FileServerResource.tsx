@@ -42,71 +42,85 @@ export default function FileServerResource({ onClose }: { onClose: () => void })
       zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{
-        background: '#ece9d8', color: '#000',
-        width: 700, maxWidth: '95vw', height: 500, maxHeight: '95vh',
+        background: '#ffffff', color: '#000000',
+        width: 800, maxWidth: '95vw', height: 600, maxHeight: '95vh',
         display: 'flex', flexDirection: 'column',
-        boxShadow: '2px 2px 10px rgba(0,0,0,0.5)', border: '1px solid #0054e3',
-        fontFamily: '"Tahoma", "Segoe UI", sans-serif'
+        boxShadow: '0 10px 30px rgba(0,0,0,0.2)', border: '1px solid #999', borderRadius: 8,
+        fontFamily: '"Segoe UI", sans-serif', overflow: 'hidden'
       }}>
         <div style={{ 
-          background: 'linear-gradient(to right, #0058e6, #3a93ff)', color: 'white', padding: '4px 8px', 
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #0054e3', fontSize: 13, fontWeight: 'bold'
+          background: '#ffffff', color: '#000', padding: '8px 12px', 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, userSelect: 'none'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Folder size={14} color="#fff" /> File Server Resource Manager
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Folder size={16} color="#eab308" fill="#eab308" style={{ opacity: 0.8 }} /> 
+            <span>File Server Resource Manager</span>
           </div>
-          <button style={{ background: '#e81123', color: '#fff', border: 'none', width: 24, height: 20, cursor: 'pointer' }} onClick={onClose}>
-            <X size={14} />
+          <button style={{ background: 'none', color: '#e81123', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+            <X size={16} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#fff', margin: 2, border: '1px solid #7f9db9' }}>
+        {/* Menu Bar */}
+        <div style={{ background: '#ffffff', padding: '2px 8px', display: 'flex', gap: 16, fontSize: 12, borderBottom: '1px solid #e0e0e0', color: '#333' }}>
+          <div style={{ cursor: 'pointer', padding: '4px 6px' }}>File</div>
+          <div style={{ cursor: 'pointer', padding: '4px 6px' }}>Action</div>
+          <div style={{ cursor: 'pointer', padding: '4px 6px' }}>View</div>
+          <div style={{ cursor: 'pointer', padding: '4px 6px' }}>Help</div>
+        </div>
+
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#ffffff' }}>
           
           {/* LEFT LIST */}
-          <div style={{ width: 250, borderRight: '1px solid #ccc', overflowY: 'auto' }}>
-            <div style={{ background: '#ece9d8', padding: '4px 8px', borderBottom: '1px solid #ccc', fontWeight: 'bold', fontSize: 12 }}>
+          <div style={{ width: 250, borderRight: '1px solid #e0e0e0', overflowY: 'auto' }}>
+            <div style={{ background: '#f9fafb', padding: '8px 12px', borderBottom: '1px solid #e0e0e0', fontWeight: 'bold', fontSize: 12, color: '#4b5563' }}>
               Shared Folders
             </div>
             {shares.map(share => (
               <div 
                 key={share.id} 
                 style={{ 
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12,
-                  background: selectedShareId === share.id ? '#316ac5' : 'transparent', 
-                  color: selectedShareId === share.id ? '#fff' : '#000'
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12,
+                  background: selectedShareId === share.id ? '#e0f2fe' : 'transparent', 
+                  color: selectedShareId === share.id ? '#0369a1' : '#111827',
+                  borderLeft: selectedShareId === share.id ? '3px solid #0284c7' : '3px solid transparent'
                 }}
                 onClick={() => setSelectedShareId(share.id)}
               >
-                <Folder size={16} color={selectedShareId === share.id ? '#fff' : '#f59e0b'} fill={selectedShareId === share.id ? 'transparent' : '#f59e0b'} /> 
-                {share.name} <span style={{ color: selectedShareId === share.id ? '#ddd' : '#666', fontSize: 10 }}>({share.path})</span>
+                <Folder size={16} color="#eab308" fill="#eab308" style={{ opacity: 0.8 }} /> 
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span>{share.name}</span>
+                  <span style={{ color: selectedShareId === share.id ? '#0284c7' : '#6b7280', fontSize: 10 }}>{share.path}</span>
+                </div>
               </div>
             ))}
           </div>
 
           {/* RIGHT PERMISSIONS */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 16, fontSize: 12, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', fontSize: 12, display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
             {!selectedShare ? (
-              <div style={{ textAlign: 'center', color: '#666', marginTop: 100 }}>Select a share to manage permissions.</div>
+              <div style={{ textAlign: 'center', color: '#6b7280', marginTop: 100, fontSize: 14 }}>Select a share to manage properties and permissions.</div>
             ) : (
               <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <Shield size={32} color="#3b82f6" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <Shield size={40} color="#0078d4" fill="#e0f2fe" />
                   <div>
-                    <h3 style={{ margin: 0, fontSize: 16 }}>{selectedShare.name} Properties</h3>
-                    <div style={{ color: '#666' }}>NTFS Security & Permissions</div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#111827' }}>{selectedShare.name} Properties</h3>
+                    <div style={{ color: '#4b5563', marginTop: 2 }}>NTFS Security, Quotas & File Screening</div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid #ccc', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #d1d5db', marginBottom: 20 }}>
                   {['Security', 'Quota', 'Screening', 'EffectiveAccess'].map(tab => (
                     <div 
                       key={tab}
                       onClick={() => setActiveTab(tab as any)}
                       style={{ 
-                        padding: '4px 8px', cursor: 'pointer',
-                        fontWeight: activeTab === tab ? 'bold' : 'normal',
-                        borderBottom: activeTab === tab ? '2px solid #0054e3' : 'none',
-                        color: activeTab === tab ? '#0054e3' : '#666'
+                        padding: '8px 16px', cursor: 'pointer',
+                        fontWeight: activeTab === tab ? '600' : 'normal',
+                        borderBottom: activeTab === tab ? '2px solid #0078d4' : '2px solid transparent',
+                        color: activeTab === tab ? '#0078d4' : '#4b5563',
+                        transition: 'all 0.2s'
                       }}
                     >
                       {tab === 'EffectiveAccess' ? 'Effective Access' : tab}
@@ -115,82 +129,85 @@ export default function FileServerResource({ onClose }: { onClose: () => void })
                 </div>
 
                 {activeTab === 'Security' && (
-                  <div style={{ flex: 1 }}>
-                    <strong>Group or user names:</strong>
-                  <div style={{ border: '1px solid #ccc', height: 150, overflowY: 'auto', marginTop: 4, background: '#fff' }}>
-                    {Object.entries(selectedShare.ntfsPermissions).map(([principal, perm]) => (
-                      <div key={principal} style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {principal.toLowerCase().includes('admin') || principal.toLowerCase().includes('group') || principal.toLowerCase().includes('users') || !principal.includes('@') ? (
-                            <Users size={14} color="#666" />
-                          ) : (
-                            <User size={14} color="#666" />
-                          )}
-                          {principal}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                          <span style={{ color: '#666' }}>{perm}</span>
-                          <button 
-                            style={{ background: 'transparent', border: 'none', color: '#e81123', cursor: 'pointer', padding: 0 }}
-                            onClick={() => serverStore.updateSharePermission(selectedShare.id, principal, 'Remove')}
-                          >
-                            Remove
-                          </button>
-                        </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                      <strong style={{ color: '#111827', display: 'block', marginBottom: 8 }}>Group or user names:</strong>
+                      <div style={{ border: '1px solid #d1d5db', height: 180, overflowY: 'auto', background: '#ffffff', borderRadius: 4 }}>
+                        {Object.entries(selectedShare.ntfsPermissions).map(([principal, perm]) => (
+                          <div key={principal} style={{ padding: '8px 12px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#111827' }}>
+                              {principal.toLowerCase().includes('admin') || principal.toLowerCase().includes('group') || principal.toLowerCase().includes('users') || !principal.includes('@') ? (
+                                <Users size={16} color="#4b5563" />
+                              ) : (
+                                <User size={16} color="#4b5563" />
+                              )}
+                              <span>{principal}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                              <span style={{ color: '#4b5563', fontSize: 11, background: '#f3f4f6', padding: '2px 8px', borderRadius: 12 }}>{perm}</span>
+                              <button 
+                                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                                onClick={() => serverStore.updateSharePermission(selectedShare.id, principal, 'Remove')}
+                                title="Remove Permission"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-
-                  <div style={{ marginTop: 16, background: '#f5f5f5', padding: 12, border: '1px solid #ccc' }}>
-                    <strong>Add Permissions</strong>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <input 
-                        value={newPrincipal}
-                        onChange={e => setNewPrincipal(e.target.value)}
-                        placeholder="Enter object name to select"
-                        style={{ flex: 1, padding: '4px 8px', border: '1px solid #ccc' }}
-                      />
-                      <select 
-                        value={newPermission} 
-                        onChange={e => setNewPermission(e.target.value as any)}
-                        style={{ padding: '4px 8px', border: '1px solid #ccc' }}
-                      >
-                        <option value="Read">Read</option>
-                        <option value="Modify">Modify</option>
-                        <option value="FullControl">Full Control</option>
-                      </select>
-                      <button 
-                        onClick={handleAddPermission}
-                        style={{ padding: '4px 16px', background: '#ece9d8', border: '1px solid #0054e3', cursor: 'pointer' }}
-                      >
-                        Add
-                      </button>
                     </div>
-                  </div>
+
+                    <div style={{ background: '#f9fafb', padding: 16, border: '1px solid #e5e7eb', borderRadius: 6 }}>
+                      <strong style={{ color: '#111827' }}>Add Permissions</strong>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                        <input 
+                          value={newPrincipal}
+                          onChange={e => setNewPrincipal(e.target.value)}
+                          placeholder="Enter object name (e.g. jdoe or Administrators)"
+                          style={{ flex: 1, padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 4, outline: 'none' }}
+                        />
+                        <select 
+                          value={newPermission} 
+                          onChange={e => setNewPermission(e.target.value as any)}
+                          style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 4, outline: 'none', background: '#fff' }}
+                        >
+                          <option value="Read">Read</option>
+                          <option value="Modify">Modify</option>
+                          <option value="FullControl">Full Control</option>
+                        </select>
+                        <button 
+                          onClick={handleAddPermission}
+                          style={{ padding: '6px 16px', background: '#0078d4', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {activeTab === 'Quota' && (
-                  <div style={{ flex: 1, padding: 8, border: '1px solid #ccc', background: '#f9f9f9' }}>
-                    <div style={{ marginBottom: 16 }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1, padding: 16, border: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: 6 }}>
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: '#111827', cursor: 'pointer' }}>
                         <input type="checkbox" checked={selectedShare.quotaLimit !== undefined} onChange={(e) => {
                           serverStore.updateShare(selectedShare.id, { quotaLimit: e.target.checked ? 1024 : undefined });
-                        }} />
+                        }} style={{ width: 16, height: 16 }} />
                         Enable Quota Management
                       </label>
                     </div>
                     {selectedShare.quotaLimit !== undefined && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <label>Limit Space To (MB):</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginLeft: 28 }}>
+                        <label style={{ color: '#4b5563', fontWeight: 500 }}>Limit Space To (MB):</label>
                         <input 
                           type="number" 
                           value={selectedShare.quotaLimit} 
                           onChange={(e) => serverStore.updateShare(selectedShare.id, { quotaLimit: parseInt(e.target.value) || 0 })}
-                          style={{ padding: '4px 8px', border: '1px solid #ccc', width: 150 }}
+                          style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 4, width: 200, outline: 'none' }}
                         />
-                        <div style={{ color: '#666', marginTop: 16 }}>
-                          <p>Hard Quota: Prevents users from saving files after space limit is reached.</p>
+                        <div style={{ color: '#6b7280', marginTop: 12, fontSize: 11, background: '#e0f2fe', padding: 8, borderRadius: 4, color: '#0369a1' }}>
+                          <p style={{ margin: 0 }}><strong>Hard Quota:</strong> Prevents users from saving files after space limit is reached.</p>
                         </div>
                       </div>
                     )}
@@ -198,32 +215,32 @@ export default function FileServerResource({ onClose }: { onClose: () => void })
                 )}
 
                 {activeTab === 'Screening' && (
-                  <div style={{ flex: 1, padding: 8, border: '1px solid #ccc', background: '#f9f9f9' }}>
-                    <div style={{ marginBottom: 16 }}>
-                      <strong>File Screening Options</strong>
-                      <p style={{ color: '#666', marginTop: 4 }}>Block specific file types from being saved on this share.</p>
+                  <div style={{ flex: 1, padding: 16, border: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: 6 }}>
+                    <div style={{ marginBottom: 20 }}>
+                      <strong style={{ fontSize: 14, color: '#111827' }}>File Screening Options</strong>
+                      <p style={{ color: '#4b5563', marginTop: 4 }}>Block specific file types from being saved on this share.</p>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <label>Blocked Extensions (comma separated):</label>
+                      <label style={{ color: '#4b5563', fontWeight: 500 }}>Blocked Extensions (comma separated):</label>
                       <input 
                         type="text" 
                         value={(selectedShare.fileScreening || []).join(', ')} 
                         onChange={(e) => serverStore.updateShare(selectedShare.id, { fileScreening: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                         placeholder="e.g. .mp3, .avi, .exe"
-                        style={{ padding: '4px 8px', border: '1px solid #ccc', width: '100%' }}
+                        style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', outline: 'none' }}
                       />
                     </div>
                   </div>
                 )}
 
                 {activeTab === 'EffectiveAccess' && (
-                  <div style={{ flex: 1, padding: 8, border: '1px solid #ccc', background: '#f9f9f9' }}>
-                    <div style={{ marginBottom: 16 }}>
-                      <strong>Effective Access Test</strong>
-                      <p style={{ color: '#666', marginTop: 4 }}>Simulate the permissions a specific user will have.</p>
+                  <div style={{ flex: 1, padding: 16, border: '1px solid #e5e7eb', background: '#f9fafb', borderRadius: 6 }}>
+                    <div style={{ marginBottom: 20 }}>
+                      <strong style={{ fontSize: 14, color: '#111827' }}>Effective Access Test</strong>
+                      <p style={{ color: '#4b5563', marginTop: 4 }}>Simulate the permissions a specific user will have.</p>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <input id="effectiveUserInput" placeholder="Enter user name..." style={{ padding: '4px 8px', border: '1px solid #ccc', flex: 1 }} />
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <input id="effectiveUserInput" placeholder="Enter user name..." style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 4, flex: 1, outline: 'none' }} />
                       <button onClick={() => {
                         const val = (document.getElementById('effectiveUserInput') as HTMLInputElement).value;
                         if (!val) return;
@@ -236,7 +253,7 @@ export default function FileServerResource({ onClose }: { onClose: () => void })
                         } else {
                            alert('Effective Access for ' + val + ': None');
                         }
-                      }} style={{ padding: '4px 16px', background: '#ece9d8', border: '1px solid #0054e3', cursor: 'pointer' }}>
+                      }} style={{ padding: '8px 24px', background: '#0078d4', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>
                         Calculate
                       </button>
                     </div>

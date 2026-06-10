@@ -24,6 +24,7 @@ import AzureVMNode from './AzureVMNode';
 import AzureVNGNode from './AzureVNGNode';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import { useAzureStore } from '../../store/useAzureStore';
+import { useActiveDirectoryStore } from '../../store/useActiveDirectoryStore';
 import type { DeviceType, Device } from '../../types/device';
 
 const nodeTypes = {
@@ -128,6 +129,20 @@ export default function NetworkCanvas() {
         routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {},
       };
       addDeviceToStore(newLogicalDevice);
+
+      // Add to Active Directory if it's a PC
+      if (type === 'pc') {
+        const adStore = useActiveDirectoryStore.getState();
+        const workstationsOu = Object.values(adStore.ous).find(ou => ou.name === 'Workstations');
+        if (workstationsOu) {
+          adStore.createComputer({
+            id: `comp-${newId.toLowerCase()}`, name: newId, type: 'Computer',
+            distinguishedName: `CN=${newId},OU=Workstations,DC=corp,DC=local`,
+            enabled: true, operatingSystem: 'Windows 11 Enterprise', operatingSystemVersion: '10.0',
+            parentOuId: workstationsOu.id
+          });
+        }
+      }
     },
     [screenToFlowPosition, nodes, addDeviceToStore]
   );

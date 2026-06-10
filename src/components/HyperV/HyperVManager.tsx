@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useServerStore } from '../../store/useServerStore';
-import { Server, Monitor, X, Play, Square, Pause, RotateCcw } from 'lucide-react';
+import { Server, Monitor, X, Play, Square, Pause, RotateCcw, Camera, Network } from 'lucide-react';
 
 export default function HyperVManager({ onClose }: { onClose: () => void }) {
   const serverStore = useServerStore();
@@ -62,35 +62,64 @@ export default function HyperVManager({ onClose }: { onClose: () => void }) {
 
           {/* MIDDLE VIEW */}
           <div style={{ flex: 1, overflowY: 'auto', borderRight: '1px solid #ccc', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ background: '#ece9d8', padding: '4px 8px', borderBottom: '1px solid #ccc', fontWeight: 'bold', fontSize: 12 }}>
-              Virtual Machines
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead style={{ background: '#f5f5f5', borderBottom: '1px solid #ccc', textAlign: 'left' }}>
-                <tr>
-                  <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>Name</th>
-                  <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>State</th>
-                  <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>CPU Usage</th>
-                  <th style={{ padding: '2px 6px', fontWeight: 'normal' }}>Assigned Memory</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vms.map(vm => (
-                  <tr 
-                    key={vm.id} 
-                    style={{ background: selectedVmId === vm.id ? '#316ac5' : 'transparent', color: selectedVmId === vm.id ? '#fff' : '#000', cursor: 'pointer' }}
-                    onClick={() => setSelectedVmId(vm.id)}
-                  >
-                    <td style={{ padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Monitor size={14} color={selectedVmId === vm.id ? '#fff' : '#000'} /> {vm.name}
-                    </td>
-                    <td style={{ padding: '2px 6px' }}>{vm.state}</td>
-                    <td style={{ padding: '2px 6px' }}>{vm.state === 'Running' ? `${vm.cpuUsage}%` : ''}</td>
-                    <td style={{ padding: '2px 6px' }}>{vm.state === 'Running' ? `${vm.memoryAssigned} MB` : ''}</td>
+            <div style={{ flex: 1, borderBottom: '1px solid #ccc', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ background: '#ece9d8', padding: '4px 8px', borderBottom: '1px solid #ccc', fontWeight: 'bold', fontSize: 12 }}>
+                Virtual Machines
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead style={{ background: '#f5f5f5', borderBottom: '1px solid #ccc', textAlign: 'left' }}>
+                  <tr>
+                    <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>Name</th>
+                    <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>State</th>
+                    <th style={{ padding: '2px 6px', fontWeight: 'normal', borderRight: '1px solid #ccc' }}>CPU Usage</th>
+                    <th style={{ padding: '2px 6px', fontWeight: 'normal' }}>Assigned Memory</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {vms.map(vm => (
+                    <tr 
+                      key={vm.id} 
+                      style={{ background: selectedVmId === vm.id ? '#316ac5' : 'transparent', color: selectedVmId === vm.id ? '#fff' : '#000', cursor: 'pointer' }}
+                      onClick={() => setSelectedVmId(vm.id)}
+                    >
+                      <td style={{ padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Monitor size={14} color={selectedVmId === vm.id ? '#fff' : '#000'} /> {vm.name}
+                      </td>
+                      <td style={{ padding: '2px 6px' }}>{vm.state}</td>
+                      <td style={{ padding: '2px 6px' }}>{vm.state === 'Running' ? `${vm.cpuUsage}%` : ''}</td>
+                      <td style={{ padding: '2px 6px' }}>{vm.state === 'Running' ? `${vm.memoryAssigned} MB` : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* CHECKPOINTS VIEW */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ background: '#ece9d8', padding: '4px 8px', borderBottom: '1px solid #ccc', fontWeight: 'bold', fontSize: 12 }}>
+                Checkpoints
+              </div>
+              <div style={{ padding: 8, fontSize: 12 }}>
+                {!selectedVm ? (
+                  <div style={{ color: '#666' }}>Select a virtual machine to view checkpoints.</div>
+                ) : (
+                  <div>
+                    {(selectedVm.checkpoints || []).length === 0 ? (
+                      <div style={{ color: '#666' }}>No checkpoints exist for this virtual machine.</div>
+                    ) : (
+                      <ul style={{ paddingLeft: 20, margin: 0 }}>
+                        {selectedVm.checkpoints?.map((cp, idx) => (
+                          <li key={idx} style={{ marginBottom: 4 }}>
+                            <Camera size={12} style={{ marginRight: 6, display: 'inline-block', verticalAlign: 'middle' }} />
+                            {cp}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* RIGHT ACTIONS PANE */}
@@ -130,7 +159,39 @@ export default function HyperVManager({ onClose }: { onClose: () => void }) {
                     <Play size={14} color="#10b981" /> Resume
                   </div>
                 )}
+                <div style={{ borderTop: '1px solid #ccc', margin: '4px 0' }}></div>
+                <div 
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#000' }} 
+                  onClick={() => {
+                    const name = prompt('Enter checkpoint name:');
+                    if (name && selectedVmId) {
+                      serverStore.updateVM(selectedVmId, {
+                        checkpoints: [...(selectedVm.checkpoints || []), name]
+                      });
+                    }
+                  }}
+                >
+                  <Camera size={14} color="#3b82f6" /> Checkpoint
+                </div>
+                {selectedVm.virtualSwitch && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#000' }}>
+                    <Network size={14} color="#f59e0b" /> {selectedVm.virtualSwitch}
+                  </div>
+                )}
               </div>
+            )}
+            {!selectedVm && (
+               <div style={{ padding: 8, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                 <div style={{ fontWeight: 'bold', color: '#003399', borderBottom: '1px solid #ccc', paddingBottom: 4, marginBottom: 4 }}>
+                   HYPERV-HOST
+                 </div>
+                 <div 
+                   style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#000' }} 
+                   onClick={() => alert('Virtual Switch Manager modal would open here.')}
+                 >
+                   <Network size={14} color="#f59e0b" /> Virtual Switch Manager...
+                 </div>
+               </div>
             )}
           </div>
         </div>

@@ -13,6 +13,8 @@ export interface GPO {
   name: string;
   status: 'Enabled' | 'AllSettingsDisabled' | 'ComputerConfigurationDisabled' | 'UserConfigurationDisabled';
   links: string[]; // OUs this is linked to
+  enforcedLinks?: string[]; // OUs where this link is enforced
+  securityFiltering?: string[]; // Group IDs this applies to
   settings: Record<string, GpoSetting>;
 }
 
@@ -64,6 +66,8 @@ export const useGpoStore = create<GpoState>((set, get) => ({
           name: 'Default Domain Policy',
           status: 'Enabled',
           links: ['corp.local'],
+          enforcedLinks: [],
+          securityFiltering: ['Authenticated Users'],
           settings: {
             'set-pwd-len': { id: 'set-pwd-len', category: 'Computer', path: 'Windows Settings/Security Settings/Account Policies/Password Policy', name: 'Minimum password length', state: 'Enabled' },
             'set-pwd-age': { id: 'set-pwd-age', category: 'Computer', path: 'Windows Settings/Security Settings/Account Policies/Password Policy', name: 'Maximum password age', state: 'Enabled' },
@@ -74,6 +78,8 @@ export const useGpoStore = create<GpoState>((set, get) => ({
           name: 'Block USB Removable Storage',
           status: 'Enabled',
           links: ['corp.local/Workstations'],
+          enforcedLinks: ['corp.local/Workstations'],
+          securityFiltering: ['Authenticated Users'],
           settings: {
             'set-usb-deny': { id: 'set-usb-deny', category: 'Computer', path: 'Administrative Templates/System/Removable Storage Access', name: 'All Removable Storage classes: Deny all access', state: 'Enabled' }
           }

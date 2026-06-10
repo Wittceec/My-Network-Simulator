@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type DnsRecordType = 'A' | 'AAAA' | 'CNAME' | 'MX' | 'TXT' | 'SRV' | 'NS' | 'SOA';
+export type DnsRecordType = 'A' | 'AAAA' | 'CNAME' | 'MX' | 'TXT' | 'SRV' | 'NS' | 'SOA' | 'PTR';
 
 export interface DnsRecord {
   id: string;
@@ -103,7 +103,7 @@ export const useDnsStore = create<DnsState>((set, get) => ({
           records: {
             'rec-soa-rev': { id: 'rec-soa-rev', name: '@', type: 'SOA', data: 'dc01.corp.local.', ttl: 3600 },
             'rec-ns-rev': { id: 'rec-ns-rev', name: '@', type: 'NS', data: 'dc01.corp.local.', ttl: 3600 },
-            'rec-ptr10': { id: 'rec-ptr10', name: '10', type: 'TXT', data: 'dc01.corp.local.', ttl: 3600 }, // using TXT as a mock for PTR since we don't have PTR in DnsRecordType, let's just use it or add PTR
+            'rec-ptr10': { id: 'rec-ptr10', name: '10', type: 'PTR', data: 'dc01.corp.local.', ttl: 3600 },
           }
         }
       }

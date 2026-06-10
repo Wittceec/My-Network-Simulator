@@ -7,6 +7,8 @@ export interface HyperVM {
   cpuUsage: number;
   memoryAssigned: number;
   uptime: number;
+  virtualSwitch?: string; // e.g. "External Virtual Switch"
+  checkpoints?: string[]; // list of checkpoint names
 }
 
 export interface FileShare {
@@ -14,6 +16,8 @@ export interface FileShare {
   name: string;
   path: string;
   ntfsPermissions: Record<string, 'Read' | 'Modify' | 'FullControl'>; // map of group/user name to permission
+  quotaLimit?: number; // MB
+  fileScreening?: string[]; // extensions like ".mp3"
 }
 
 interface ServerState {
@@ -22,9 +26,11 @@ interface ServerState {
   
   createVM: (vm: HyperVM) => void;
   updateVMState: (id: string, state: HyperVM['state']) => void;
+  updateVM: (id: string, updates: Partial<HyperVM>) => void;
   
   createShare: (share: FileShare) => void;
   updateSharePermission: (shareId: string, principal: string, permission: 'Read' | 'Modify' | 'FullControl' | 'Remove') => void;
+  updateShare: (id: string, updates: Partial<FileShare>) => void;
   
   seedDefaultServers: () => void;
 }
@@ -39,8 +45,18 @@ export const useServerStore = create<ServerState>((set, get) => ({
     if (!vm) return state;
     return { vms: { ...state.vms, [id]: { ...vm, state: vmState } } };
   }),
+  updateVM: (id, updates: Partial<HyperVM>) => set((state) => {
+    const vm = state.vms[id];
+    if (!vm) return state;
+    return { vms: { ...state.vms, [id]: { ...vm, ...updates } } };
+  }),
 
   createShare: (share) => set((state) => ({ shares: { ...state.shares, [share.id]: share } })),
+  updateShare: (id, updates: Partial<FileShare>) => set((state) => {
+    const share = state.shares[id];
+    if (!share) return state;
+    return { shares: { ...state.shares, [id]: { ...share, ...updates } } };
+  }),
   updateSharePermission: (shareId, principal, permission) => set((state) => {
     const share = state.shares[shareId];
     if (!share) return state;

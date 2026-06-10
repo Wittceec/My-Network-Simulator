@@ -9,6 +9,7 @@ export default function FileServerResource({ onClose }: { onClose: () => void })
   const [selectedShareId, setSelectedShareId] = useState<string | null>(null);
   const [newPrincipal, setNewPrincipal] = useState('');
   const [newPermission, setNewPermission] = useState<'Read' | 'Modify' | 'FullControl'>('Read');
+  const [activeTab, setActiveTab] = useState<'Security' | 'Quota' | 'Screening' | 'EffectiveAccess'>('Security');
 
   useEffect(() => {
     serverStore.seedDefaultServers();
@@ -96,8 +97,26 @@ export default function FileServerResource({ onClose }: { onClose: () => void })
                   </div>
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <strong>Group or user names:</strong>
+                <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid #ccc', marginBottom: 16 }}>
+                  {['Security', 'Quota', 'Screening', 'EffectiveAccess'].map(tab => (
+                    <div 
+                      key={tab}
+                      onClick={() => setActiveTab(tab as any)}
+                      style={{ 
+                        padding: '4px 8px', cursor: 'pointer',
+                        fontWeight: activeTab === tab ? 'bold' : 'normal',
+                        borderBottom: activeTab === tab ? '2px solid #0054e3' : 'none',
+                        color: activeTab === tab ? '#0054e3' : '#666'
+                      }}
+                    >
+                      {tab === 'EffectiveAccess' ? 'Effective Access' : tab}
+                    </div>
+                  ))}
+                </div>
+
+                {activeTab === 'Security' && (
+                  <div style={{ flex: 1 }}>
+                    <strong>Group or user names:</strong>
                   <div style={{ border: '1px solid #ccc', height: 150, overflowY: 'auto', marginTop: 4, background: '#fff' }}>
                     {Object.entries(selectedShare.ntfsPermissions).map(([principal, perm]) => (
                       <div key={principal} style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee' }}>
@@ -148,7 +167,81 @@ export default function FileServerResource({ onClose }: { onClose: () => void })
                       </button>
                     </div>
                   </div>
-                </div>
+                  </div>
+                )}
+
+                {activeTab === 'Quota' && (
+                  <div style={{ flex: 1, padding: 8, border: '1px solid #ccc', background: '#f9f9f9' }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input type="checkbox" checked={selectedShare.quotaLimit !== undefined} onChange={(e) => {
+                          serverStore.updateShare(selectedShare.id, { quotaLimit: e.target.checked ? 1024 : undefined });
+                        }} />
+                        Enable Quota Management
+                      </label>
+                    </div>
+                    {selectedShare.quotaLimit !== undefined && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <label>Limit Space To (MB):</label>
+                        <input 
+                          type="number" 
+                          value={selectedShare.quotaLimit} 
+                          onChange={(e) => serverStore.updateShare(selectedShare.id, { quotaLimit: parseInt(e.target.value) || 0 })}
+                          style={{ padding: '4px 8px', border: '1px solid #ccc', width: 150 }}
+                        />
+                        <div style={{ color: '#666', marginTop: 16 }}>
+                          <p>Hard Quota: Prevents users from saving files after space limit is reached.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'Screening' && (
+                  <div style={{ flex: 1, padding: 8, border: '1px solid #ccc', background: '#f9f9f9' }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <strong>File Screening Options</strong>
+                      <p style={{ color: '#666', marginTop: 4 }}>Block specific file types from being saved on this share.</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label>Blocked Extensions (comma separated):</label>
+                      <input 
+                        type="text" 
+                        value={(selectedShare.fileScreening || []).join(', ')} 
+                        onChange={(e) => serverStore.updateShare(selectedShare.id, { fileScreening: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                        placeholder="e.g. .mp3, .avi, .exe"
+                        style={{ padding: '4px 8px', border: '1px solid #ccc', width: '100%' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'EffectiveAccess' && (
+                  <div style={{ flex: 1, padding: 8, border: '1px solid #ccc', background: '#f9f9f9' }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <strong>Effective Access Test</strong>
+                      <p style={{ color: '#666', marginTop: 4 }}>Simulate the permissions a specific user will have.</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input id="effectiveUserInput" placeholder="Enter user name..." style={{ padding: '4px 8px', border: '1px solid #ccc', flex: 1 }} />
+                      <button onClick={() => {
+                        const val = (document.getElementById('effectiveUserInput') as HTMLInputElement).value;
+                        if (!val) return;
+                        // Extremely simplified mock logic
+                        const isDomainUser = Object.values(adStore.users).some(u => u.name.toLowerCase() === val.toLowerCase());
+                        if (selectedShare.ntfsPermissions['Administrators'] === 'FullControl' && val.toLowerCase() === 'administrator') {
+                           alert('Effective Access for ' + val + ': FullControl');
+                        } else if (selectedShare.ntfsPermissions['Domain Users'] && isDomainUser) {
+                           alert('Effective Access for ' + val + ': ' + selectedShare.ntfsPermissions['Domain Users']);
+                        } else {
+                           alert('Effective Access for ' + val + ': None');
+                        }
+                      }} style={{ padding: '4px 16px', background: '#ece9d8', border: '1px solid #0054e3', cursor: 'pointer' }}>
+                        Calculate
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

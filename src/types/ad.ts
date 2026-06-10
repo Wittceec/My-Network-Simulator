@@ -33,8 +33,18 @@ export interface ADUser extends ADObject {
   passwordExpired: boolean;
   passwordNeverExpires?: boolean;
   userCannotChangePassword?: boolean;
+  userMustChangePassword?: boolean;
+  pwdLastSet?: number;
+  badPwdCount?: number;
   accountExpires?: number | null; // Timestamp or null
   
+  logonHours?: string; // e.g. 24x7 representation
+  logonWorkstations?: string[]; // list of computer names
+  
+  profilePath?: string;
+  logonScript?: string;
+  homeDirectory?: string;
+
   groups: string[]; // Group IDs
 }
 
@@ -55,6 +65,7 @@ export interface ADGroup extends ADObject {
 export interface ADOrganizationalUnit extends ADObject {
   type: 'OU';
   description?: string;
+  blockInheritance?: boolean;
 }
 
 export interface GPO {
@@ -62,6 +73,8 @@ export interface GPO {
   name: string;
   enabled: boolean;
   linkedOUs: string[]; // OU IDs
+  enforcedLinks?: string[]; // OU IDs where this link is enforced
+  securityFiltering?: string[]; // Group IDs (if undefined, applies to Authenticated Users)
   settings: Record<string, string>; // e.g. "PasswordPolicy.MinLength": "8"
 }
 

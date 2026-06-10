@@ -3,7 +3,7 @@ import { useJobStore } from '../../store/useJobStore';
 import { startTicketEngine, stopTicketEngine } from '../../core/simulators/TicketEngine';
 import { Clock, Briefcase, CheckCircle, AlertTriangle, Info, X, Globe } from 'lucide-react';
 import type { JobRole, Ticket } from '../../types/job';
-import { generateWorld } from '../../core/simulators/WorldGenerator';
+import EnvironmentSetup from './EnvironmentSetup';
 
 interface JobPortalProps {
   onClose: () => void;
@@ -14,6 +14,7 @@ const ROLES: JobRole[] = ['HelpDesk', 'SysAdmin', 'NetAdmin', 'CloudArchitect', 
 export default function JobPortal({ onClose }: JobPortalProps) {
   const jobStore = useJobStore();
   const [selectedRole, setSelectedRole] = useState<JobRole>('HelpDesk');
+  const [showSetup, setShowSetup] = useState(false);
 
   useEffect(() => {
     if (jobStore.isClockedIn) {
@@ -61,13 +62,14 @@ export default function JobPortal({ onClose }: JobPortalProps) {
             {!jobStore.isClockedIn && (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#3c3c3c', padding: '4px 8px', borderRadius: 6 }}>
                 <span style={{ fontSize: 12 }}>Initialize World:</span>
-                <button onClick={() => generateWorld('small')} className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', display: 'flex', gap: 4 }}><Globe size={14}/> Small</button>
-                <button onClick={() => generateWorld('enterprise')} className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', display: 'flex', gap: 4 }}><Globe size={14}/> Enterprise</button>
+                <button onClick={() => setShowSetup(true)} className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', display: 'flex', gap: 4 }}><Globe size={14}/> Setup Environment...</button>
               </div>
             )}
             <button className="btn btn-icon" onClick={onClose}><X size={20} /></button>
           </div>
         </div>
+
+        {showSetup && <EnvironmentSetup onClose={() => setShowSetup(false)} />}
 
         <div style={{ padding: 16, display: 'flex', flex: 1, overflow: 'hidden' }}>
           {/* LEFT PANEL: Controls */}

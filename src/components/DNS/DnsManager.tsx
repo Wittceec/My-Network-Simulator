@@ -7,6 +7,8 @@ export default function DnsManager({ onClose }: { onClose: () => void }) {
   const dnsStore = useDnsStore();
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({ server: true, fwd: true, rev: true });
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, targetId: string | null, type: 'zone' | null } | null>(null);
+  const [newRecordModal, setNewRecordModal] = useState<{ zoneId: string, type: string } | null>(null);
 
   useEffect(() => {
     dnsStore.seedDefaultDns();
@@ -23,12 +25,21 @@ export default function DnsManager({ onClose }: { onClose: () => void }) {
     setExpandedNodes(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleRightClick = (e: React.MouseEvent, targetId: string | null, type: 'zone') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, targetId, type });
+    if (targetId) setSelectedZoneId(targetId);
+  };
+
+  const closeMenu = () => setContextMenu(null);
+
   return (
-    <div className="modal-backdrop" onClick={onClose} style={{
+    <div className="modal-backdrop" onClick={() => { onClose(); closeMenu(); }} style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+      <div className="modal-content" onClick={e => { e.stopPropagation(); closeMenu(); }} style={{
         background: '#ece9d8', color: '#000',
         width: 800, maxWidth: '95vw', height: 550, maxHeight: '95vh',
         display: 'flex', flexDirection: 'column',
@@ -88,6 +99,7 @@ export default function DnsManager({ onClose }: { onClose: () => void }) {
                       <div 
                         style={{ display: 'flex', alignItems: 'center', gap: 4, background: selectedZoneId === z.id ? '#316ac5' : 'transparent', color: selectedZoneId === z.id ? '#fff' : '#000', padding: '2px 4px', flex: 1 }}
                         onClick={() => setSelectedZoneId(z.id)}
+                        onContextMenu={(e) => handleRightClick(e, z.id, 'zone')}
                       >
                         <Globe size={14} color={selectedZoneId === z.id ? '#fff' : '#9ca3af'} /> {z.name}
                       </div>
@@ -110,6 +122,7 @@ export default function DnsManager({ onClose }: { onClose: () => void }) {
                       <div 
                         style={{ display: 'flex', alignItems: 'center', gap: 4, background: selectedZoneId === z.id ? '#316ac5' : 'transparent', color: selectedZoneId === z.id ? '#fff' : '#000', padding: '2px 4px', flex: 1 }}
                         onClick={() => setSelectedZoneId(z.id)}
+                        onContextMenu={(e) => handleRightClick(e, z.id, 'zone')}
                       >
                         <Globe size={14} color={selectedZoneId === z.id ? '#fff' : '#9ca3af'} /> {z.name}
                       </div>
@@ -161,7 +174,115 @@ export default function DnsManager({ onClose }: { onClose: () => void }) {
           {records.length} records
         </div>
       </div>
-      <style>{`.ad-row:hover { background: #e5f3ff; }`}</style>
+
+      {/* CONTEXT MENU */}
+      {contextMenu && (
+        <div style={{
+          position: 'absolute', top: contextMenu.y, left: contextMenu.x,
+          background: '#ece9d8', border: '1px solid #999', boxShadow: '2px 2px 5px rgba(0,0,0,0.3)',
+          padding: 2, zIndex: 10000, fontSize: 12, minWidth: 200, fontFamily: 'Tahoma'
+        }} onClick={e => e.stopPropagation()}>
+          {contextMenu.type === 'zone' && (
+            <>
+              <div className="menu-item" onClick={() => { setNewRecordModal({ zoneId: contextMenu.targetId!, type: 'A' }); closeMenu(); }} style={{ padding: '4px 24px', cursor: 'pointer' }}>New Host (A or AAAA)...</div>
+              <div className="menu-item" onClick={() => { setNewRecordModal({ zoneId: contextMenu.targetId!, type: 'CNAME' }); closeMenu(); }} style={{ padding: '4px 24px', cursor: 'pointer' }}>New Alias (CNAME)...</div>
+              <div className="menu-item" onClick={() => { setNewRecordModal({ zoneId: contextMenu.targetId!, type: 'MX' }); closeMenu(); }} style={{ padding: '4px 24px', cursor: 'pointer' }}>New Mail Exchanger (MX)...</div>
+              <div className="menu-item" onClick={() => { setNewRecordModal({ zoneId: contextMenu.targetId!, type: 'PTR' }); closeMenu(); }} style={{ padding: '4px 24px', cursor: 'pointer' }}>New Pointer (PTR)...</div>
+              <div style={{ borderTop: '1px solid #ccc', margin: '2px 0' }}></div>
+              <div className="menu-item" onClick={() => { setNewRecordModal({ zoneId: contextMenu.targetId!, type: 'TXT' }); closeMenu(); }} style={{ padding: '4px 24px', cursor: 'pointer' }}>Other New Records...</div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* NEW RECORD MODAL */}
+      {newRecordModal && (
+        <NewRecordDialog 
+          zoneId={newRecordModal.zoneId} 
+          type={newRecordModal.type as any} 
+          onClose={() => setNewRecordModal(null)} 
+        />
+      )}
+
+      <style>{`.ad-row:hover { background: #e5f3ff; } .menu-item:hover { background: #316ac5; color: white; }`}</style>
+    </div>
+  );
+}
+
+function NewRecordDialog({ zoneId, type, onClose }: { zoneId: string, type: 'A' | 'CNAME' | 'MX' | 'PTR' | 'TXT', onClose: () => void }) {
+  const dnsStore = useDnsStore();
+  const zone = dnsStore.zones[zoneId];
+  
+  const [name, setName] = useState('');
+  const [data, setData] = useState('');
+  const [priority, setPriority] = useState('10');
+
+  const handleSave = () => {
+    const finalData = type === 'MX' ? `${priority} ${data}` : data;
+    dnsStore.addRecord(zoneId, {
+      id: `rec-${Math.random().toString(36).substr(2, 5)}`,
+      name: name || '@',
+      type: type,
+      data: finalData,
+      ttl: 3600
+    });
+    onClose();
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center'
+    }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+        background: '#ece9d8', color: '#000',
+        width: 350, display: 'flex', flexDirection: 'column',
+        boxShadow: '2px 2px 10px rgba(0,0,0,0.5)', border: '1px solid #0054e3',
+        fontFamily: '"Tahoma", "Segoe UI", sans-serif', fontSize: 12
+      }}>
+        <div style={{ 
+          background: 'linear-gradient(to right, #0058e6, #3a93ff)', color: 'white', padding: '4px 8px', 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, fontWeight: 'bold'
+        }}>
+          <span>New Resource Record</span>
+          <button style={{ background: '#e81123', color: '#fff', border: 'none', width: 24, height: 20, cursor: 'pointer' }} onClick={onClose}><X size={14} /></button>
+        </div>
+
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>Record Type: <strong>{type}</strong></div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label>Name (uses parent domain name if blank):</label>
+            <input className="ad-input" value={name} onChange={e => setName(e.target.value)} />
+            <div style={{ color: '#666', fontSize: 11 }}>Fully qualified domain name (FQDN):</div>
+            <div style={{ color: '#666', fontSize: 11 }}>{name ? `${name}.${zone.name}.` : `${zone.name}.`}</div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label>
+              {type === 'A' ? 'IP address:' : 
+               type === 'CNAME' ? 'Target host:' : 
+               type === 'MX' ? 'Mail exchanger:' : 
+               type === 'PTR' ? 'Host name:' : 'Value:'}
+            </label>
+            <input className="ad-input" value={data} onChange={e => setData(e.target.value)} />
+          </div>
+
+          {type === 'MX' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label>Mail server priority:</label>
+              <input type="number" className="ad-input" value={priority} onChange={e => setPriority(e.target.value)} />
+            </div>
+          )}
+
+        </div>
+
+        <div style={{ padding: 12, display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #ccc' }}>
+          <button className="btn" style={{ width: 80, fontSize: 12, padding: '4px 0' }} onClick={handleSave}>OK</button>
+          <button className="btn" style={{ width: 80, fontSize: 12, padding: '4px 0' }} onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+      <style>{`.ad-input { border: 1px solid #7f9db9; padding: 2px 4px; outline: none; }`}</style>
     </div>
   );
 }

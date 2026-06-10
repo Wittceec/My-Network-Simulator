@@ -366,9 +366,38 @@ function PropertiesDialog({ userId, onClose }: { userId: string, onClose: () => 
               <div style={{ border: '1px solid #ccc', height: 100, overflowY: 'auto', background: '#fff', padding: 4 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={formData.userCannotChangePassword} onChange={e => setFormData({...formData, userCannotChangePassword: e.target.checked})} /> User cannot change password</label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={formData.passwordNeverExpires} onChange={e => setFormData({...formData, passwordNeverExpires: e.target.checked})} /> Password never expires</label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={formData.passwordExpired} onChange={e => setFormData({...formData, passwordExpired: e.target.checked})} /> User must change password at next logon</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={formData.userMustChangePassword} onChange={e => setFormData({...formData, userMustChangePassword: e.target.checked})} /> User must change password at next logon</label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={!formData.enabled} onChange={e => setFormData({...formData, enabled: !e.target.checked})} /> Account is disabled</label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={formData.lockedOut} onChange={e => setFormData({...formData, lockedOut: e.target.checked})} /> Account is locked out</label>
+              </div>
+              <hr style={{ borderTop: '1px solid #eee', width: '100%', margin: '8px 0' }}/>
+              <div>Account expires:</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="radio" checked={formData.accountExpires === null || formData.accountExpires === undefined} onChange={() => setFormData({...formData, accountExpires: null})} /> Never</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <input type="radio" checked={formData.accountExpires !== null && formData.accountExpires !== undefined} onChange={() => setFormData({...formData, accountExpires: Date.now()})} /> 
+                  End of: <input type="date" className="ad-input" style={{ width: 120 }} value={formData.accountExpires ? new Date(formData.accountExpires).toISOString().split('T')[0] : ''} onChange={e => setFormData({...formData, accountExpires: new Date(e.target.value).getTime()})} disabled={formData.accountExpires === null || formData.accountExpires === undefined} />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'Profile' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div>User profile</div>
+              <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 8 }}><span style={{ width: 120 }}>Profile path:</span><input className="ad-input" value={formData.profilePath || ''} onChange={e => setFormData({...formData, profilePath: e.target.value})} /></div>
+              <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 8 }}><span style={{ width: 120 }}>Logon script:</span><input className="ad-input" value={formData.logonScript || ''} onChange={e => setFormData({...formData, logonScript: e.target.value})} /></div>
+              <hr style={{ borderTop: '1px solid #eee', width: '100%', margin: '8px 0' }}/>
+              <div>Home folder</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="radio" checked={!formData.homeDirectory?.includes(':')} onChange={() => setFormData({...formData, homeDirectory: ''})} /> Local path: <input className="ad-input" style={{ flex: 1 }} value={!formData.homeDirectory?.includes(':') ? formData.homeDirectory || '' : ''} onChange={e => setFormData({...formData, homeDirectory: e.target.value})} disabled={formData.homeDirectory?.includes(':')} /></label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <input type="radio" checked={formData.homeDirectory?.includes(':')} onChange={() => setFormData({...formData, homeDirectory: 'Z:\\'})} /> Connect: 
+                  <select className="ad-input" style={{ width: 50 }} disabled={!formData.homeDirectory?.includes(':')}>
+                    <option>Z:</option><option>Y:</option><option>X:</option>
+                  </select>
+                  To: <input className="ad-input" style={{ flex: 1 }} value={formData.homeDirectory?.includes(':') ? formData.homeDirectory : ''} onChange={e => setFormData({...formData, homeDirectory: e.target.value})} disabled={!formData.homeDirectory?.includes(':')} />
+                </label>
               </div>
             </div>
           )}

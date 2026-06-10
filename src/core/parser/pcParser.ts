@@ -212,11 +212,16 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
         if (args.indexOf('-Department') !== -1) updates.department = args[args.indexOf('-Department') + 1].replace(/["']/g, "");
         if (args.indexOf('-Company') !== -1) updates.company = args[args.indexOf('-Company') + 1].replace(/["']/g, "");
         if (args.indexOf('-Office') !== -1) updates.office = args[args.indexOf('-Office') + 1].replace(/["']/g, "");
+        if (args.indexOf('-AccountExpirationDate') !== -1) updates.accountExpires = new Date(args[args.indexOf('-AccountExpirationDate') + 1].replace(/["']/g, "")).getTime();
+        if (args.indexOf('-LogonWorkstations') !== -1) updates.logonWorkstations = args[args.indexOf('-LogonWorkstations') + 1].replace(/["']/g, "").split(',');
+        if (args.indexOf('-ProfilePath') !== -1) updates.profilePath = args[args.indexOf('-ProfilePath') + 1].replace(/["']/g, "");
+        if (args.indexOf('-HomeDirectory') !== -1) updates.homeDirectory = args[args.indexOf('-HomeDirectory') + 1].replace(/["']/g, "");
+
         if (Object.keys(updates).length > 0) {
           adStore.updateUser(user.id, updates);
           output.push('');
         } else {
-          output.push('Usage: Set-ADUser -Identity <username> -Title "Title" -Department "Dept"');
+          output.push('Usage: Set-ADUser -Identity <username> -Title "Title" -Department "Dept" -AccountExpirationDate "MM/DD/YYYY"');
         }
       } else {
         output.push(`Set-ADUser : Cannot find an object with identity: '${username}'.`);
@@ -291,6 +296,89 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
     } else {
       output.push('Usage: New-ADGroup -Name "Marketing"');
     }
+  } else if (cmd === 'add-adgroupmember') {
+    const adStore = useActiveDirectoryStore.getState();
+    const identityIndex = args.indexOf('-Identity');
+    const memberIndex = args.indexOf('-Members');
+    if (identityIndex !== -1 && memberIndex !== -1 && args[identityIndex + 1] && args[memberIndex + 1]) {
+      const groupName = args[identityIndex + 1].replace(/["']/g, "").toLowerCase();
+      const userName = args[memberIndex + 1].replace(/["']/g, "").toLowerCase();
+      
+      const group = Object.values(adStore.groups).find(g => g.name.toLowerCase() === groupName || g.sAMAccountName?.toLowerCase() === groupName);
+      const user = Object.values(adStore.users).find(u => u.sAMAccountName.toLowerCase() === userName || u.name.toLowerCase() === userName);
+      
+      if (group && user) {
+        if (!group.members.includes(user.id)) {
+          adStore.updateGroup(group.id, { members: [...group.members, user.id] });
+          adStore.updateUser(user.id, { groups: [...user.groups, group.id] });
+        }
+        output.push('');
+      } else {
+        output.push(`Add-ADGroupMember : Cannot find an object with identity: '${groupName}' or member '${userName}'.`);
+      }
+    } else {
+      output.push('Usage: Add-ADGroupMember -Identity "GroupName" -Members "UserName"');
+    }
+  } else if (cmd === 'remove-adgroupmember') {
+    const adStore = useActiveDirectoryStore.getState();
+    const identityIndex = args.indexOf('-Identity');
+    const memberIndex = args.indexOf('-Members');
+    if (identityIndex !== -1 && memberIndex !== -1 && args[identityIndex + 1] && args[memberIndex + 1]) {
+      const groupName = args[identityIndex + 1].replace(/["']/g, "").toLowerCase();
+      const userName = args[memberIndex + 1].replace(/["']/g, "").toLowerCase();
+      
+      const group = Object.values(adStore.groups).find(g => g.name.toLowerCase() === groupName || g.sAMAccountName?.toLowerCase() === groupName);
+      const user = Object.values(adStore.users).find(u => u.sAMAccountName.toLowerCase() === userName || u.name.toLowerCase() === userName);
+      
+      if (group && user) {
+        adStore.updateGroup(group.id, { members: group.members.filter(id => id !== user.id) });
+        adStore.updateUser(user.id, { groups: user.groups.filter(id => id !== group.id) });
+        output.push('');
+      } else {
+        output.push(`Remove-ADGroupMember : Cannot find an object with identity: '${groupName}' or member '${userName}'.`);
+      }
+    } else {
+      output.push('Usage: Remove-ADGroupMember -Identity "GroupName" -Members "UserName"');
+    }
+  } else if (cmd === 'get-adgroup') {
+    const adStore = useActiveDirectoryStore.getState();
+    const identityIndex = args.indexOf('-Identity');
+    if (identityIndex !== -1 && args[identityIndex + 1]) {
+      const groupName = args[identityIndex + 1].replace(/["']/g, "").toLowerCase();
+      const group = Object.values(adStore.groups).find(g => g.name.toLowerCase() === groupName || g.sAMAccountName?.toLowerCase() === groupName);
+      
+      if (group) {
+        output.push(`DistinguishedName : ${group.distinguishedName}`);
+        output.push(`GroupCategory     : ${group.groupType}`);
+        output.push(`GroupScope        : ${group.groupScope}`);
+        output.push(`Name              : ${group.name}`);
+        output.push(`ObjectClass       : group`);
+        if (args.includes('-Properties') && args.includes('Members')) {
+          const memberNames = group.members.map(mid => adStore.users[mid]?.name || adStore.computers[mid]?.name || mid);
+          output.push(`Members           : {${memberNames.join(', ')}}`);
+        }
+      } else {
+        output.push(`Get-ADGroup : Cannot find an object with identity: '${groupName}'.`);
+      }
+    } else {
+      output.push('Usage: Get-ADGroup -Identity "GroupName" [-Properties Members]');
+    }
+  } else if (cmd === 'reset-adaccountpassword') {
+    const adStore = useActiveDirectoryStore.getState();
+    const identityIndex = args.indexOf('-Identity');
+    if (identityIndex !== -1 && args[identityIndex + 1]) {
+      const username = args[identityIndex + 1].replace(/["']/g, "").toLowerCase();
+      const user = Object.values(adStore.users).find(u => u.sAMAccountName.toLowerCase() === username || u.name.toLowerCase() === username);
+      
+      if (user) {
+        adStore.updateUser(user.id, { pwdLastSet: Date.now(), badPwdCount: 0, passwordExpired: false, lockedOut: false });
+        output.push('');
+      } else {
+        output.push(`Reset-ADAccountPassword : Cannot find an object with identity: '${username}'.`);
+      }
+    } else {
+      output.push('Usage: Reset-ADAccountPassword -Identity <username>');
+    }
   } else if (cmd === 'start-adsyncsynccycle') {
     const adStore = useActiveDirectoryStore.getState();
     const azureStore = useAzureStore.getState();
@@ -327,16 +415,40 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
     }
     
     // Simple mock resolution
-    const targetName = nameToResolve.toLowerCase().replace('.corp.local', '');
     const zones = Object.values(dnsStore.zones);
     let found = false;
     
+    let typeFilter = 'A';
+    const typeIndex = args.indexOf('-Type');
+    if (typeIndex !== -1 && args[typeIndex + 1]) {
+      typeFilter = args[typeIndex + 1].toUpperCase();
+    }
+
     output.push(`Name                                           Type   TTL   Section    NameHost/IPAddress`);
     output.push(`----                                           ----   ---   -------    ------------------`);
 
     zones.forEach(zone => {
       Object.values(zone.records).forEach(record => {
-        if (record.name.toLowerCase() === targetName || (record.name === '@' && nameToResolve.toLowerCase() === zone.name.toLowerCase())) {
+        let isMatch = false;
+        
+        if (zone.type === 'Reverse') {
+            // For reverse zones, the user is likely querying an IP like 10.0.0.10
+            // and the record might just be named '10' or '10.0'
+            const ipParts = nameToResolve.split('.');
+            if (ipParts.length === 4) {
+               const lastOctet = ipParts[3];
+               if (record.name === lastOctet) isMatch = true;
+            } else if (record.name.toLowerCase() === nameToResolve.toLowerCase()) {
+               isMatch = true;
+            }
+        } else {
+            const fqdn = record.name === '@' ? zone.name : `${record.name}.${zone.name}`;
+            if (record.name.toLowerCase() === nameToResolve.toLowerCase() || fqdn.toLowerCase() === nameToResolve.toLowerCase()) {
+              isMatch = true;
+            }
+        }
+
+        if (isMatch && (typeFilter === 'ALL' || record.type === typeFilter || (typeFilter === 'A' && !['PTR','MX','TXT','SRV','NS','SOA'].includes(record.type)))) {
           output.push(`${nameToResolve.padEnd(46)} ${record.type.padEnd(6)} ${record.ttl.toString().padEnd(5)} Answer     ${record.data}`);
           found = true;
         }
@@ -345,6 +457,132 @@ export function executePcCommand(rawInput: string, device: Device): string[] {
     
     if (!found) {
       output.push(`Resolve-DnsName : ${nameToResolve} : DNS name does not exist`);
+    }
+  } else if (cmd === 'gpupdate') {
+    output.push('Updating policy...');
+    output.push('');
+    output.push('Computer Policy update has completed successfully.');
+    output.push('User Policy update has completed successfully.');
+  } else if (cmd === 'gpresult' && args[1] && args[1].toLowerCase() === '/r') {
+    const adStore = useActiveDirectoryStore.getState();
+    const gpoStore = useGpoStore.getState();
+    
+    // In a real system we'd look up the logged in user. Here we'll mock based on the PC name to show application.
+    output.push('RSOP data for CORP\\user on ' + device.hostname.toUpperCase() + ' : Logging Mode');
+    output.push('---------------------------------------------------------------------------');
+    output.push('');
+    output.push('OS Configuration:            Member Server');
+    output.push('OS Version:                  10.0.19044');
+    output.push('Site Name:                   Default-First-Site-Name');
+    output.push('Roaming Profile:             N/A');
+    output.push('Local Profile:               C:\\Users\\user');
+    output.push('');
+    output.push('COMPUTER SETTINGS');
+    output.push('------------------');
+    output.push('    CN=' + device.hostname + ',OU=Computers,DC=corp,DC=local');
+    output.push('    Last time Group Policy was applied: ' + new Date().toLocaleString());
+    output.push('    Group Policy was applied from:      dc01.corp.local');
+    output.push('');
+    output.push('    Applied Group Policy Objects');
+    output.push('    -----------------------------');
+
+    // Simple mock logic: if the computer is domain joined, apply 'Default Domain Policy'. 
+    // If it's a workstation, apply 'Block USB Removable Storage'
+    let applied = ['Default Domain Policy'];
+    if (device.hostname.toLowerCase().startsWith('ws-')) {
+        applied.push('Block USB Removable Storage');
+    }
+
+    const gpos = Object.values(gpoStore.gpos);
+    applied.forEach(gpoName => {
+        const gpo = gpos.find(g => g.name === gpoName);
+        if (gpo && gpo.status === 'Enabled') {
+            output.push('        ' + gpo.name);
+        }
+    });
+
+    output.push('');
+    output.push('    The following GPOs were not applied because they were filtered out');
+    output.push('    -------------------------------------------------------------------');
+    output.push('        Local Group Policy');
+    output.push('            Filtering:  Not Applied (Empty)');
+    output.push('');
+    output.push('USER SETTINGS');
+    output.push('--------------');
+    output.push('    CN=user,OU=Users,DC=corp,DC=local');
+    output.push('    Last time Group Policy was applied: ' + new Date().toLocaleString());
+    output.push('    Group Policy was applied from:      dc01.corp.local');
+    output.push('');
+    output.push('    Applied Group Policy Objects');
+    output.push('    -----------------------------');
+    output.push('        Default Domain Policy');
+    output.push('');
+    const dnsStore = useDnsStore.getState();
+    const query = args[1];
+    
+    if (!query) {
+      output.push('Default Server:  dc01.corp.local');
+      output.push('Address:  10.0.0.10');
+      output.push('');
+      output.push('> (Interactive mode not supported. Use: nslookup <name>)');
+      return output;
+    }
+
+    let typeFilter = 'A';
+    let qArg = args.find(a => a.toLowerCase().startsWith('-type=') || a.toLowerCase().startsWith('-querytype='));
+    if (qArg) {
+        typeFilter = qArg.split('=')[1].toUpperCase();
+    }
+
+    output.push('Server:  dc01.corp.local');
+    output.push('Address:  10.0.0.10');
+    output.push('');
+
+    const zones = Object.values(dnsStore.zones);
+    let found = false;
+
+    // Is it an IP query? (Reverse lookup)
+    const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(query);
+
+    zones.forEach(zone => {
+      Object.values(zone.records).forEach(record => {
+        let isMatch = false;
+
+        if (isIp && zone.type === 'Reverse') {
+            const ipParts = query.split('.');
+            if (ipParts.length === 4 && record.name === ipParts[3]) {
+                isMatch = true;
+            }
+        } else if (!isIp && zone.type === 'Forward') {
+            const fqdn = record.name === '@' ? zone.name : `${record.name}.${zone.name}`;
+            if (record.name.toLowerCase() === query.toLowerCase() || fqdn.toLowerCase() === query.toLowerCase()) {
+                isMatch = true;
+            }
+        }
+
+        if (isMatch) {
+            if (typeFilter === 'A' || record.type === typeFilter) {
+               if (!found) output.push(`Non-authoritative answer:`);
+               found = true;
+               if (record.type === 'PTR') {
+                  output.push(`${query}       name = ${record.data}`);
+               } else if (record.type === 'A') {
+                  const fqdn = record.name === '@' ? zone.name : `${record.name}.${zone.name}`;
+                  output.push(`Name:    ${fqdn}`);
+                  output.push(`Address:  ${record.data}`);
+               } else if (record.type === 'MX') {
+                  const fqdn = record.name === '@' ? zone.name : `${record.name}.${zone.name}`;
+                  output.push(`${fqdn}      MX preference = ${record.data.split(' ')[0]}, mail exchanger = ${record.data.split(' ')[1]}`);
+               } else {
+                  output.push(`${record.name}      ${record.type} = ${record.data}`);
+               }
+            }
+        }
+      });
+    });
+
+    if (!found) {
+        output.push(`*** dc01.corp.local can't find ${query}: Non-existent domain`);
     }
   } else if (cmd === 'add-adgroupmember') {
     const adStore = useActiveDirectoryStore.getState();

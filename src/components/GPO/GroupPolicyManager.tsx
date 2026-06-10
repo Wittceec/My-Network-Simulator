@@ -132,10 +132,24 @@ export default function GroupPolicyManager({ onClose }: { onClose: () => void })
                   <strong>Status:</strong> {selectedGpo.status}
                 </div>
 
-                <h4 style={{ margin: '0 0 8px 0', fontSize: 13, borderBottom: '1px solid #ccc', paddingBottom: 4 }}>Links</h4>
-                <ul style={{ margin: '0 0 16px 0', paddingLeft: 20, fontSize: 12 }}>
-                  {selectedGpo.links.map((link, idx) => <li key={idx}>{link}</li>)}
-                </ul>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+                  <div style={{ flex: 1, border: '1px solid #ccc', padding: 8, background: '#f9f9f9' }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: 13, borderBottom: '1px solid #ccc', paddingBottom: 4 }}>Links</h4>
+                    <ul style={{ margin: '0 0 16px 0', paddingLeft: 20, fontSize: 12 }}>
+                      {selectedGpo.links.map((link, idx) => (
+                        <li key={idx}>
+                          {link} {selectedGpo.enforcedLinks?.includes(link) ? <strong style={{ color: '#d97706' }}>(Enforced)</strong> : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div style={{ flex: 1, border: '1px solid #ccc', padding: 8, background: '#f9f9f9' }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: 13, borderBottom: '1px solid #ccc', paddingBottom: 4 }}>Security Filtering</h4>
+                    <ul style={{ margin: '0 0 16px 0', paddingLeft: 20, fontSize: 12 }}>
+                      {(selectedGpo.securityFiltering || []).map((group, idx) => <li key={idx}>{group}</li>)}
+                    </ul>
+                  </div>
+                </div>
 
                 <h4 style={{ margin: '0 0 8px 0', fontSize: 13, borderBottom: '1px solid #ccc', paddingBottom: 4 }}>Settings</h4>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>

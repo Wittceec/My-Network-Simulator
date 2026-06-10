@@ -185,6 +185,10 @@ export default function Home({ onNavigate }: HomeProps) {
               <div className="icon-wrapper" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}><ShieldAlert size={24} /></div>
               <span>SOC / SIEM</span>
             </button>
+            <button className="launch-btn" onClick={() => onNavigate('m365')}>
+              <div className="icon-wrapper" style={{ background: 'rgba(0, 120, 212, 0.1)', color: '#0078d4' }}><Cloud size={24} /></div>
+              <span>Microsoft 365</span>
+            </button>
           </div>
         </div>
 

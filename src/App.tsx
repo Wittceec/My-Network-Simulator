@@ -14,6 +14,7 @@ import FileServerResource from './components/FileServer/FileServerResource';
 import Layout from './components/Dashboard/Layout';
 import Home from './components/Dashboard/Home';
 import SocDashboard from './components/Security/SocDashboard';
+import M365AdminCenter from './components/M365/M365AdminCenter';
 
 class AppErrorBoundary extends React.Component<{children: any}, {error: any}> {
   constructor(props: any) { super(props); this.state = { error: null }; }
@@ -50,6 +51,7 @@ function App() {
         {currentView === 'fs' && <AppErrorBoundary><div style={{width: '100%', height: '100%', position: 'relative'}}><FileServerResource onClose={() => setCurrentView('home')} /></div></AppErrorBoundary>}
         {currentView === 'azure' && <AppErrorBoundary><div style={{width: '100%', height: '100%', position: 'relative'}}><AzurePortal onClose={() => setCurrentView('home')} /></div></AppErrorBoundary>}
         {currentView === 'soc' && <AppErrorBoundary><div style={{width: '100%', height: '100%', position: 'relative'}}><SocDashboard onClose={() => setCurrentView('home')} /></div></AppErrorBoundary>}
+        {currentView === 'm365' && <AppErrorBoundary><div style={{width: '100%', height: '100%', position: 'relative'}}><M365AdminCenter onClose={() => setCurrentView('home')} /></div></AppErrorBoundary>}
       </Layout>
     </ReactFlowProvider>
   );

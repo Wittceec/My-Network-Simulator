@@ -6,6 +6,7 @@ import { useServerStore } from '../../store/useServerStore';
 import { useGpoStore } from '../../store/useGpoStore';
 import { useJobStore } from '../../store/useJobStore';
 import { useSecurityStore } from '../../store/useSecurityStore';
+import { useM365Store } from '../../store/useM365Store';
 import type { ADDomain, ADOrganizationalUnit, ADUser, ADComputer, ADGroup } from '../../types/ad';
 import { generateId } from '../../utils/helpers';
 
@@ -24,6 +25,8 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   useNetworkStore.setState({ devices: {}, links: {} });
   // Security store is cleared
   useSecurityStore.setState({ logs: [], firewallRules: {} });
+  // M365 store is cleared
+  useM365Store.setState({ users: {}, sharedMailboxes: {}, sites: {} });
 
   // 1. Generate Active Directory
   const ad = useActiveDirectoryStore.getState();
@@ -200,10 +203,21 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   azure.createAppService({ id: generateId('app'), name: 'app-corp-portal', location: 'East US', type: 'Microsoft.Web/sites', appServicePlanId: aspId, runtimeStack: 'Node.js 18', tags: {}, resourceGroupName: 'rg-1' });
 
   // Sync users to Azure and Role Assignments
+  const m365 = useM365Store.getState();
   generatedUsers.slice(0, Math.floor(userCount * 0.8)).forEach((u, idx) => {
     const euId = generateId('eu');
     azure.createEntraUser({ id: euId, displayName: u.displayName, userPrincipalName: u.userPrincipalName, assignedLicenses: ['Office 365 E3'], type: 'EntraUser' });
     
+    // Sync to M365
+    m365.users[euId] = {
+      id: euId,
+      displayName: u.displayName,
+      userPrincipalName: u.userPrincipalName,
+      license: idx < 10 ? 'Microsoft 365 E5' : 'Microsoft 365 E3',
+      mailboxEnabled: true,
+      mailboxUsageMB: Math.floor(Math.random() * 5000),
+    };
+
     // Assign contributor to first 2 users for a ticket
     if (idx < 2) {
       azure.createRoleAssignment({ id: generateId('ra'), principalId: euId, roleDefinition: 'Contributor', scope: 'rg-1', type: 'RoleAssignment' });

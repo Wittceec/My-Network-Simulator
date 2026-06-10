@@ -6,6 +6,7 @@ import { useServerStore } from '../../store/useServerStore';
 import { useDnsStore } from '../../store/useDnsStore';
 import { useGpoStore } from '../../store/useGpoStore';
 import { useSecurityStore } from '../../store/useSecurityStore';
+import { useM365Store } from '../../store/useM365Store';
 import type { JobRole, Ticket, TicketSeverity } from '../../types/job';
 
 let ticketTimer: NodeJS.Timeout | null = null;
@@ -88,9 +89,18 @@ function generateSysAdminTicket(): Ticket | null {
     return createTicket('Enforce File Share Quota', 'Users are filling up the "Public" file share. Enable Quota Management and set a 1024 MB limit on it.', 'SysAdmin', 'Medium', 'fs_enable_quota');
   } else if (rand < 0.9) {
     return createTicket('Map Network Drive via GPO', 'Users need S: mapped to \\\\FILE01\\Public. Configure the "Map Public Drive" GPO to Create the S: drive map.', 'SysAdmin', 'Medium', 'gpo_map_drive');
-  } else {
     return createTicket('Deploy Printer via GPO', 'HR needs their printer deployed. Configure the "Deploy HR Printers" GPO to deploy \\\\PrintServer\\HR-M507.', 'SysAdmin', 'Medium', 'gpo_deploy_printer');
+  } else if (rand < 0.95) {
+    const m365Store = useM365Store.getState();
+    const users = Object.values(m365Store.users).filter(u => u.license === 'Unlicensed');
+    if (users.length > 0) {
+      const u = users[0];
+      return createTicket(`Assign E5 License`, `${u.displayName} needs an E5 license assigned.`, 'SysAdmin', 'Medium', 'm365_assign_license', u.id);
+    }
+  } else {
+    return createTicket('Create Shared Mailbox', 'Create a shared mailbox called "IT Support" with email "it@corp.local".', 'SysAdmin', 'Medium', 'm365_create_shared_mailbox');
   }
+  return null;
 }
 
 function generateNetAdminTicket(): Ticket | null {
@@ -475,6 +485,21 @@ export function verifyTickets() {
           const { firewallRules } = useSecurityStore.getState();
           const rules = Object.values(firewallRules);
           return rules.some(r => r.action === 'Deny' && r.sourceIp === ticket.targetResourceId);
+        });
+        break;
+
+      // M365
+      case 'm365_assign_license':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          if (!ticket.targetResourceId) return false;
+          const user = useM365Store.getState().users[ticket.targetResourceId];
+          return user ? user.license === 'Microsoft 365 E5' : false;
+        });
+        break;
+      case 'm365_create_shared_mailbox':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          const mailboxes = Object.values(useM365Store.getState().sharedMailboxes);
+          return mailboxes.some(mb => mb.emailAddress.toLowerCase() === 'it@corp.local');
         });
         break;
     }

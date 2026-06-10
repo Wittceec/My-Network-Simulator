@@ -25,6 +25,7 @@ export default function Layout({ children, currentView, onNavigate }: LayoutProp
     { id: 'hyperv', icon: <Monitor size={20} />, label: 'Hyper-V' },
     { id: 'fs', icon: <Folder size={20} />, label: 'File Server' },
     { id: 'azure', icon: <Cloud size={20} />, label: 'Azure Portal' },
+    { id: 'm365', icon: <Cloud size={20} />, label: 'Microsoft 365' },
     { id: 'soc', icon: <ShieldAlert size={20} />, label: 'SOC / SIEM' },
     { id: 'network', icon: <Network size={20} />, label: 'Network Map' },
   ];

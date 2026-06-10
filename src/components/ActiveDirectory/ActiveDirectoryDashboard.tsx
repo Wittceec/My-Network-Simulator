@@ -77,7 +77,7 @@ export default function ActiveDirectoryDashboard({ onClose }: ActiveDirectoryDas
 
   return (
     <div className="modal-backdrop" onClick={() => { onClose(); closeMenu(); }} style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div className="modal-content" onClick={e => { e.stopPropagation(); closeMenu(); }} style={{
@@ -301,7 +301,7 @@ function PropertiesDialog({ userId, onClose }: { userId: string, onClose: () => 
 
   return (
     <div className="modal-backdrop" onClick={onClose} style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{

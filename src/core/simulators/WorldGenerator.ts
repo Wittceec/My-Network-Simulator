@@ -5,11 +5,9 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import { useServerStore } from '../../store/useServerStore';
 import { useGpoStore } from '../../store/useGpoStore';
 import { useJobStore } from '../../store/useJobStore';
+import { useSecurityStore } from '../../store/useSecurityStore';
 import type { ADDomain, ADOrganizationalUnit, ADUser, ADComputer, ADGroup } from '../../types/ad';
-
-function generateId(prefix: string) {
-  return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
-}
+import { generateId } from '../../utils/helpers';
 
 export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   console.log(`Starting World Generation (${size})...`);
@@ -24,6 +22,8 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   useServerStore.setState({ vms: {}, shares: {} });
   // Network store is cleared
   useNetworkStore.setState({ devices: {}, links: {} });
+  // Security store is cleared
+  useSecurityStore.setState({ logs: [], firewallRules: {} });
 
   // 1. Generate Active Directory
   const ad = useActiveDirectoryStore.getState();
@@ -237,6 +237,49 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
 
   net.addLink({ id: generateId('link'), sourceId: sw1Id, targetId: svrId, status: 'up', bandwidth: 1000 });
   net.addLink({ id: generateId('link'), sourceId: sw2Id, targetId: svr2Id, status: 'up', bandwidth: 1000 });
+
+  // 7. Generate Initial SOC / SIEM Noise
+  const sec = useSecurityStore.getState();
+  sec.addFirewallRule({
+    id: generateId('rule'),
+    name: 'Default Deny Inbound',
+    action: 'Deny',
+    sourceIp: 'Any',
+    destinationIp: 'Any',
+    destinationPort: 'Any',
+    protocol: 'Any',
+    priority: 4096
+  });
+
+  const now = Date.now();
+  // Generate some background noise
+  for (let i = 0; i < 50; i++) {
+    const isMalicious = Math.random() > 0.9;
+    sec.addLog({
+      id: generateId('log'),
+      timestamp: now - Math.floor(Math.random() * 3600000), // within last hour
+      sourceIp: `192.168.1.${Math.floor(Math.random() * 255)}`,
+      destinationIp: `10.0.0.${Math.floor(Math.random() * 255)}`,
+      action: isMalicious ? 'Denied' : 'Allowed',
+      protocol: 'TCP',
+      port: isMalicious ? 22 : 443,
+      severity: isMalicious ? 'Warning' : 'Info',
+      message: isMalicious ? 'Firewall dropped packet from untrusted subnet' : 'Standard web traffic'
+    });
+  }
+
+  // Generate a brute force attempt
+  sec.addLog({
+    id: generateId('log'),
+    timestamp: now - 300000,
+    sourceIp: '203.0.113.42',
+    destinationIp: '10.0.0.5',
+    action: 'Failed Login',
+    protocol: 'RDP',
+    port: 3389,
+    severity: 'Critical',
+    message: 'Multiple failed RDP login attempts detected from anomalous IP address.'
+  });
 
   console.log('World Generation Complete.');
 }

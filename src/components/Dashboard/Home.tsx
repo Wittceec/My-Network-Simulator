@@ -4,7 +4,7 @@ import { useJobStore } from '../../store/useJobStore';
 import { useAzureStore } from '../../store/useAzureStore';
 import { useActiveDirectoryStore } from '../../store/useActiveDirectoryStore';
 import { useServerStore } from '../../store/useServerStore';
-import { Briefcase, Server, Cloud, Network, AlertTriangle, CheckCircle, HeadphonesIcon, Monitor, User, Award, DollarSign } from 'lucide-react';
+import { Briefcase, Server, Cloud, Network, AlertTriangle, CheckCircle, HeadphonesIcon, Monitor, User, Award, DollarSign, ShieldAlert } from 'lucide-react';
 import './Dashboard.css';
 
 interface HomeProps {
@@ -180,6 +180,10 @@ export default function Home({ onNavigate }: HomeProps) {
             <button className="launch-btn" onClick={() => onNavigate('jobportal')}>
               <div className="icon-wrapper portal"><Briefcase size={24} /></div>
               <span>Job Portal</span>
+            </button>
+            <button className="launch-btn" onClick={() => onNavigate('soc')}>
+              <div className="icon-wrapper" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}><ShieldAlert size={24} /></div>
+              <span>SOC / SIEM</span>
             </button>
           </div>
         </div>

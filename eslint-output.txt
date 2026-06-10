@@ -1,0 +1,193 @@
+
+/Users/wittceec/network-sim/src/App.tsx
+   1:27  warning  'useEffect' is defined but never used     @typescript-eslint/no-unused-vars
+   4:19  warning  'SidebarSheet' is defined but never used  @typescript-eslint/no-unused-vars
+  18:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  18:73  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/components/ActiveDirectory/ActiveDirectoryDashboard.tsx
+   1:38   warning  'useRef' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+   3:94   warning  'CheckSquare' is defined but never used                                                                     @typescript-eslint/no-unused-vars
+   3:107  warning  'Square' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+   4:23   warning  'ADComputer' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+   4:35   warning  'ADOrganizationalUnit' is defined but never used                                                            @typescript-eslint/no-unused-vars
+   4:57   warning  'ADGroup' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+   4:66   warning  'ADDomain' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+  19:6    warning  React Hook useEffect has a missing dependency: 'adStore'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/wittceec/network-sim/src/components/Canvas/NetworkCanvas.tsx
+   11:3   warning  'addEdge' is defined but never used            @typescript-eslint/no-unused-vars
+  120:13  warning  'position' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  178:43  warning  'index' is defined but never used              @typescript-eslint/no-unused-vars
+  263:40  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/components/DNS/DnsManager.tsx
+    4:15  warning  'DnsZone' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+    4:24  warning  'DnsRecord' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+   15:6   warning  React Hook useEffect has a missing dependency: 'dnsStore'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  202:40  warning  Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/components/FileServer/FileServerResource.tsx
+   16:6   warning  React Hook useEffect has a missing dependency: 'serverStore'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  104:58  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  155:75  warning  Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/components/GPO/GroupPolicyManager.tsx
+   3:72  warning  'Settings' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+  14:6   warning  React Hook useEffect has a missing dependency: 'gpoStore'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/wittceec/network-sim/src/components/HyperV/HyperVManager.tsx
+  11:6  warning  React Hook useEffect has a missing dependency: 'serverStore'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/wittceec/network-sim/src/components/Job/JobPortal.tsx
+   4:56  warning  'Info' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  18:34  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/wittceec/network-sim/src/components/Job/JobPortal.tsx:18:34
+  16 |   const [selectedRole, setSelectedRole] = useState<JobRole>('HelpDesk');
+  17 |   const [showSetup, setShowSetup] = useState(false);
+> 18 |   const [now, setNow] = useState(Date.now());
+     |                                  ^^^^^^^^^^ Cannot call impure function
+  19 |
+  20 |   useEffect(() => {
+  21 |     const interval = setInterval(() => setNow(Date.now()), 60000);  react-hooks/purity
+
+/Users/wittceec/network-sim/src/components/Job/ServiceDesk.tsx
+  4:15  warning  'Ticket' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/wittceec/network-sim/src/components/Security/SocDashboard.tsx
+    3:23   warning  'Shield' is defined but never used        @typescript-eslint/no-unused-vars
+  190:117  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  214:121  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/components/UI/AzureCloudShell.tsx
+   2:58  warning  'Info' is defined but never used                     @typescript-eslint/no-unused-vars
+  25:11  warning  'resourceGroups' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  25:27  warning  'vnets' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  25:34  warning  'vms' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  60:80  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/components/UI/AzurePortal.tsx
+    17:22   warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+    28:46   warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+   182:9    warning  'handleCreateVM' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   201:15   warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+   639:35   warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  2181:68   warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  2181:104  warning  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/components/UI/AzureVMDetails.tsx
+  2:52  warning  'Shield' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/wittceec/network-sim/src/components/UI/AzureVMWizard.tsx
+  12:41  warning  'onCancel' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/wittceec/network-sim/src/components/UI/Sidebar.tsx
+   74:33  warning  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   75:35  warning  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   78:14  warning  Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  187:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/wittceec/network-sim/src/core/logic/ospf.ts
+   2:15  warning  'Device' is defined but never used        @typescript-eslint/no-unused-vars
+  33:86  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  88:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  89:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  90:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  91:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/core/logic/ping.ts
+   99:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  113:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  119:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/core/logic/stp.ts
+  73:11  warning  The value assigned to 'dpSwitch' is not used in subsequent statements  no-useless-assignment
+  74:11  warning  The value assigned to 'dpIntf' is not used in subsequent statements    no-useless-assignment
+
+/Users/wittceec/network-sim/src/core/parser/cliParser.ts
+   86:7   warning  'args' is never reassigned. Use 'const' instead    prefer-const
+   87:7   warning  'cmd' is never reassigned. Use 'const' instead     prefer-const
+   89:7   warning  'result' is never reassigned. Use 'const' instead  prefer-const
+  158:81  warning  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  166:37  warning  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  279:63  warning  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  307:17  warning  'argIdx' is never reassigned. Use 'const' instead  prefer-const
+  453:39  warning  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  454:47  warning  Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/core/parser/pcParser.ts
+   20:9   warning  'targetIp' is never reassigned. Use 'const' instead                                                                    prefer-const
+   47:9   warning  'targetIp' is never reassigned. Use 'const' instead                                                                    prefer-const
+   76:36  warning  Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  210:24  warning  Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  467:11  warning  'adStore' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+  491:9   warning  'applied' is never reassigned. Use 'const' instead                                                                     prefer-const
+  532:9   warning  'qArg' is never reassigned. Use 'const' instead                                                                        prefer-const
+  587:14  warning  This branch can never execute. Its condition is a duplicate or covered by previous conditions in the if-else-if chain  no-dupe-else-if
+
+/Users/wittceec/network-sim/src/core/simulators/TicketEngine.ts
+  115:9   warning  'rts' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  236:98  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  244:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  264:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  266:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  272:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  280:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  282:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  288:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  290:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  297:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  305:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  307:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  313:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  321:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  357:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  377:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  400:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  407:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  414:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  461:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  470:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/core/simulators/WorldGenerator.ts
+  9:15  warning  'ADDomain' is defined but never used              @typescript-eslint/no-unused-vars
+  9:25  warning  'ADOrganizationalUnit' is defined but never used  @typescript-eslint/no-unused-vars
+  9:55  warning  'ADComputer' is defined but never used            @typescript-eslint/no-unused-vars
+  9:67  warning  'ADGroup' is defined but never used               @typescript-eslint/no-unused-vars
+
+/Users/wittceec/network-sim/src/data/premadeLabs.ts
+  10:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/store/useAzureStore.ts
+    3:57  warning  'AzureResource' is defined but never used  @typescript-eslint/no-unused-vars
+  436:38  warning  'state' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/wittceec/network-sim/src/store/useCliLabStore.ts
+  3:28  warning  'CliQuest' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/wittceec/network-sim/src/types/device.ts
+  58:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  63:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/types/job.ts
+  15:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wittceec/network-sim/src/utils/ipMath.ts
+  15:12  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 122 problems (1 error, 121 warnings)
+  0 errors and 8 warnings potentially fixable with the `--fix` option.
+

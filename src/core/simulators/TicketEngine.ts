@@ -5,6 +5,7 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import { useServerStore } from '../../store/useServerStore';
 import { useDnsStore } from '../../store/useDnsStore';
 import { useGpoStore } from '../../store/useGpoStore';
+import { useSecurityStore } from '../../store/useSecurityStore';
 import type { JobRole, Ticket, TicketSeverity } from '../../types/job';
 
 let ticketTimer: NodeJS.Timeout | null = null;
@@ -148,6 +149,8 @@ function generateSecOpsTicket(): Ticket | null {
     return createTicket(`Vulnerability: Exposed RDP on ${targetVm.name}`, `Remove any NSG rules allowing port 3389 from Any source.`, 'SecOps', 'High', 'azure_nsg_restrict_rdp', targetVm.id);
   } else if (rand < 0.8) {
     return createTicket('Storage Account Public Access', 'stdiagprod001 is accessible publicly! Disable public blob access or set to private.', 'SecOps', 'Critical', 'azure_storage_secure');
+  } else if (rand < 0.9) {
+    return createTicket('SOC Alert: Brute Force', 'SIEM logs show RDP brute force attempts from 203.0.113.42. Add a global firewall rule to Deny this IP.', 'SecOps', 'Critical', 'sec_block_ip', '203.0.113.42');
   } else {
     return createTicket('File Server Audit: Finance Share', 'Remove "Domain Users" from the Finance share NTFS permissions.', 'SecOps', 'Critical', 'fs_cleanup_finance');
   }
@@ -465,6 +468,13 @@ export function verifyTickets() {
           const azureStore = useAzureStore.getState();
           const sas = Object.values(azureStore.storageAccounts || {});
           return sas.some((sa: any) => sa.name === 'stdiagprod001' && sa.accessTier === 'Cool'); // Simplified security check for sim
+        });
+        break;
+      case 'sec_block_ip':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          const { firewallRules } = useSecurityStore.getState();
+          const rules = Object.values(firewallRules);
+          return rules.some(r => r.action === 'Deny' && r.sourceIp === ticket.targetResourceId);
         });
         break;
     }

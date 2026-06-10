@@ -15,6 +15,12 @@ export default function JobPortal({ onClose }: JobPortalProps) {
   const jobStore = useJobStore();
   const [selectedRole, setSelectedRole] = useState<JobRole>('HelpDesk');
   const [showSetup, setShowSetup] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (jobStore.isClockedIn) {
@@ -98,7 +104,7 @@ export default function JobPortal({ onClose }: JobPortalProps) {
                 <h3 style={{ marginTop: 0, fontSize: 14, color: '#4ade80' }}>● Clocked In</h3>
                 <div style={{ fontSize: 12, marginBottom: 4 }}><strong>Role:</strong> {jobStore.currentRole}</div>
                 <div style={{ fontSize: 12, marginBottom: 16 }}>
-                  <strong>Time:</strong> {Math.floor((Date.now() - (jobStore.shiftStartTime || Date.now())) / 60000)} mins
+                  <strong>Time:</strong> {Math.floor((now - (jobStore.shiftStartTime || now)) / 60000)} mins
                 </div>
                 <div style={{ fontSize: 12, marginBottom: 16 }}>
                   <strong>Tickets Resolved:</strong> {jobStore.completedTicketsCount}

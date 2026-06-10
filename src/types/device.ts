@@ -53,6 +53,7 @@ export interface Device {
   id: string;
   hostname: string;
   type: DeviceType;
+  position?: { x: number, y: number };
   interfaces: Record<string, Interface>;
   routingTable: Route[];
   macAddressTable: Record<string, any>;

@@ -228,32 +228,39 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
   const net = useNetworkStore.getState();
   const r1Id = generateId('router');
   const r2Id = generateId('router');
-  net.addDevice({ id: r1Id, type: 'router', name: 'Core-RTR-1', status: 'up', position: { x: 300, y: 100 }, interfaces: [] });
-  net.addDevice({ id: r2Id, type: 'router', name: 'Core-RTR-2', status: 'up', position: { x: 500, y: 100 }, interfaces: [] });
+  net.addDevice({ id: r1Id, type: 'router', hostname: 'Core-RTR-1', powerOn: true, position: { x: 300, y: 100 }, interfaces: {
+    'fa0/0': { id: 'fa0/0', shortName: 'fa0/0', isUp: true, macAddress: '00:11:22:33:00:01', ipv4: { ip: '10.0.0.1', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 },
+    'fa0/1': { id: 'fa0/1', shortName: 'fa0/1', isUp: true, macAddress: '00:11:22:33:00:02', ipv4: { ip: '192.168.1.1', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 }
+  }, routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {} });
+  
+  net.addDevice({ id: r2Id, type: 'router', hostname: 'Branch-RTR-1', powerOn: true, position: { x: 600, y: 100 }, interfaces: {
+    'fa0/0': { id: 'fa0/0', shortName: 'fa0/0', isUp: true, macAddress: '00:11:22:33:00:03', ipv4: { ip: '192.168.1.2', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 },
+    'fa0/1': { id: 'fa0/1', shortName: 'fa0/1', isUp: true, macAddress: '00:11:22:33:00:04', ipv4: { ip: '172.16.0.1', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 }
+  }, routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {} });
 
   const sw1Id = generateId('switch');
   const sw2Id = generateId('switch');
   const sw3Id = generateId('switch');
-  net.addDevice({ id: sw1Id, type: 'switch', name: 'Access-SW-1', status: 'up', position: { x: 200, y: 300 }, interfaces: [] });
-  net.addDevice({ id: sw2Id, type: 'switch', name: 'Access-SW-2', status: 'up', position: { x: 400, y: 300 }, interfaces: [] });
-  net.addDevice({ id: sw3Id, type: 'switch', name: 'Access-SW-3', status: 'up', position: { x: 600, y: 300 }, interfaces: [] });
+  net.addDevice({ id: sw1Id, type: 'switch', hostname: 'Core-SW-1', powerOn: true, position: { x: 300, y: 250 }, interfaces: {}, routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {} });
+  net.addDevice({ id: sw2Id, type: 'switch', hostname: 'Access-SW-1', powerOn: true, position: { x: 150, y: 400 }, interfaces: {}, routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {} });
+  net.addDevice({ id: sw3Id, type: 'switch', hostname: 'Branch-SW-1', powerOn: true, position: { x: 600, y: 250 }, interfaces: {}, routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {} });
 
   const svrId = generateId('server');
   net.addDevice({ 
-    id: svrId, type: 'server', hostname: 'DC01', powerOn: true,
+    id: svrId, type: 'server', hostname: 'DC01', powerOn: true, position: { x: 100, y: 550 },
     interfaces: {
       'eth0': { id: 'eth0', shortName: 'eth0', isUp: true, macAddress: '00:11:22:33:44:01', ipv4: { ip: '10.0.0.10', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 }
     },
-    routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {}
+    routingTable: [{ network: '0.0.0.0', mask: '0.0.0.0', nextHopIp: '10.0.0.1', protocol: 'static', metric: 1 }], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {}
   } as any);
 
   const svr2Id = generateId('server');
   net.addDevice({ 
-    id: svr2Id, type: 'server', hostname: 'WEB01', powerOn: true, os: 'linux',
+    id: svr2Id, type: 'server', hostname: 'WEB01', powerOn: true, os: 'linux', position: { x: 250, y: 550 },
     interfaces: {
       'eth0': { id: 'eth0', shortName: 'eth0', isUp: true, macAddress: '00:11:22:33:44:02', ipv4: { ip: '10.0.0.20', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 }
     },
-    routingTable: [], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {},
+    routingTable: [{ network: '0.0.0.0', mask: '0.0.0.0', nextHopIp: '10.0.0.1', protocol: 'static', metric: 1 }], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {},
     fileSystem: {
       '/var/www/html': {},
       '/var/www/html/index.html': '<html><body><h1>Welcome to NGINX</h1></body></html>',
@@ -261,15 +268,36 @@ export function generateWorld(size: 'small' | 'medium' | 'enterprise') {
       '/var/log/syslog': 'Jun 10 09:00:00 WEB01 systemd[1]: Started Nginx Web Server.\nJun 10 09:01:23 WEB01 kernel: [  100.203020] eth0: link up\nJun 10 09:05:00 WEB01 CRON[1234]: pam_unix(cron:session): session opened for user root'
     }
   } as any);
+
+  const pc1Id = generateId('pc');
+  net.addDevice({
+    id: pc1Id, type: 'pc', hostname: 'PC-Exec-01', powerOn: true, position: { x: 550, y: 400 },
+    interfaces: {
+      'eth0': { id: 'eth0', shortName: 'eth0', isUp: true, macAddress: '00:11:22:33:44:03', ipv4: { ip: '172.16.0.10', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 }
+    },
+    routingTable: [{ network: '0.0.0.0', mask: '0.0.0.0', nextHopIp: '172.16.0.1', protocol: 'static', metric: 1 }], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {}
+  });
+
+  const pc2Id = generateId('pc');
+  net.addDevice({
+    id: pc2Id, type: 'pc', hostname: 'PC-Sales-01', powerOn: true, position: { x: 700, y: 400 },
+    interfaces: {
+      'eth0': { id: 'eth0', shortName: 'eth0', isUp: true, macAddress: '00:11:22:33:44:04', ipv4: { ip: '172.16.0.11', mask: '255.255.255.0' }, mode: 'routed', accessVlan: 1 }
+    },
+    routingTable: [{ network: '0.0.0.0', mask: '0.0.0.0', nextHopIp: '172.16.0.1', protocol: 'static', metric: 1 }], macAddressTable: {}, arpTable: {}, vlans: {}, acls: {}
+  });
   
   // Cross connects
   net.addLink({ id: generateId('link'), sourceId: r1Id, targetId: r2Id, status: 'up', bandwidth: 10000 });
   net.addLink({ id: generateId('link'), sourceId: r1Id, targetId: sw1Id, status: 'up', bandwidth: 1000 });
-  net.addLink({ id: generateId('link'), sourceId: r1Id, targetId: sw2Id, status: 'down', bandwidth: 1000 }); // Intentional down link
   net.addLink({ id: generateId('link'), sourceId: r2Id, targetId: sw3Id, status: 'up', bandwidth: 1000 });
 
-  net.addLink({ id: generateId('link'), sourceId: sw1Id, targetId: svrId, status: 'up', bandwidth: 1000 });
+  net.addLink({ id: generateId('link'), sourceId: sw1Id, targetId: sw2Id, status: 'up', bandwidth: 1000 });
+  net.addLink({ id: generateId('link'), sourceId: sw2Id, targetId: svrId, status: 'up', bandwidth: 1000 });
   net.addLink({ id: generateId('link'), sourceId: sw2Id, targetId: svr2Id, status: 'up', bandwidth: 1000 });
+
+  net.addLink({ id: generateId('link'), sourceId: sw3Id, targetId: pc1Id, status: 'up', bandwidth: 1000 });
+  net.addLink({ id: generateId('link'), sourceId: sw3Id, targetId: pc2Id, status: 'down', bandwidth: 1000 }); // Intentional down link
 
   // 7. Generate Initial SOC / SIEM Noise
   const sec = useSecurityStore.getState();

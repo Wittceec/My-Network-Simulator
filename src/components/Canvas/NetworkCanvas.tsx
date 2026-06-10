@@ -183,7 +183,7 @@ export default function NetworkCanvas() {
         return {
           id: dev.id,
           type: 'networkDevice',
-          position: existingNode ? existingNode.position : { x: 100 + index * 150, y: 200 },
+          position: existingNode ? existingNode.position : (dev.position || { x: 100 + index * 150, y: 200 }),
           data: { id: dev.id, label: dev.hostname, type: dev.type },
         };
       });

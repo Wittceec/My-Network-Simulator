@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { Device, Link } from '../types/device';
 
 interface NetworkState {
@@ -15,48 +16,55 @@ interface NetworkState {
   toggleDevicePower: (id: string) => void;
 }
 
-export const useNetworkStore = create<NetworkState>((set) => ({
-  devices: {},
-  links: {},
-  activeLinks: [],
-  addDevice: (device) => set((state) => ({ devices: { ...state.devices, [device.id]: { ...device, powerOn: device.powerOn ?? true } } })),
-  updateDevice: (id, updater) => set((state) => {
-    const device = state.devices[id];
-    if (!device) return state;
-    return { devices: { ...state.devices, [id]: updater(device) } };
-  }),
-  // NEW: Deletes the device AND any cables attached to it
-  removeDevice: (id) => set((state) => {
-    const newDevices = { ...state.devices };
-    delete newDevices[id];
-    
-    const newLinks = { ...state.links };
-    Object.keys(newLinks).forEach(linkId => {
-      if (newLinks[linkId].sourceDeviceId === id || newLinks[linkId].targetDeviceId === id) {
-        delete newLinks[linkId];
-      }
-    });
-    return { devices: newDevices, links: newLinks };
-  }),
-  addLink: (link) => set((state) => ({ links: { ...state.links, [link.id]: link } })),
-  // NEW: Deletes just the cable
-  removeLink: (id) => set((state) => {
-    const newLinks = { ...state.links };
-    delete newLinks[id];
-    return { links: newLinks };
-  }),
-  loadLab: (devices, links) => {
-    // ensure lab devices default to powered on if not specified
-    const poweredDevices = Object.fromEntries(Object.entries(devices).map(([k, v]) => [k, { ...v, powerOn: v.powerOn ?? true }]));
-    set({ devices: poweredDevices, links });
-  },
-  setActiveLinks: (linkIds) => set({ activeLinks: linkIds }),
-  toggleDevicePower: (id) => set((state) => {
-    const device = state.devices[id];
-    if (!device) return state;
-    const isNowOn = !(device.powerOn ?? true);
-    
-    // If turning off, we should technically drop interface links, but setting powerOn=false handles it visually.
-    return { devices: { ...state.devices, [id]: { ...device, powerOn: isNowOn } } };
-  })
-}));
+export const useNetworkStore = create<NetworkState>()(
+  persist(
+    (set) => ({
+      devices: {},
+      links: {},
+      activeLinks: [],
+      addDevice: (device) => set((state) => ({ devices: { ...state.devices, [device.id]: { ...device, powerOn: device.powerOn ?? true } } })),
+      updateDevice: (id, updater) => set((state) => {
+        const device = state.devices[id];
+        if (!device) return state;
+        return { devices: { ...state.devices, [id]: updater(device) } };
+      }),
+      // NEW: Deletes the device AND any cables attached to it
+      removeDevice: (id) => set((state) => {
+        const newDevices = { ...state.devices };
+        delete newDevices[id];
+        
+        const newLinks = { ...state.links };
+        Object.keys(newLinks).forEach(linkId => {
+          if (newLinks[linkId].sourceDeviceId === id || newLinks[linkId].targetDeviceId === id) {
+            delete newLinks[linkId];
+          }
+        });
+        return { devices: newDevices, links: newLinks };
+      }),
+      addLink: (link) => set((state) => ({ links: { ...state.links, [link.id]: link } })),
+      // NEW: Deletes just the cable
+      removeLink: (id) => set((state) => {
+        const newLinks = { ...state.links };
+        delete newLinks[id];
+        return { links: newLinks };
+      }),
+      loadLab: (devices, links) => {
+        // ensure lab devices default to powered on if not specified
+        const poweredDevices = Object.fromEntries(Object.entries(devices).map(([k, v]) => [k, { ...v, powerOn: v.powerOn ?? true }]));
+        set({ devices: poweredDevices, links });
+      },
+      setActiveLinks: (linkIds) => set({ activeLinks: linkIds }),
+      toggleDevicePower: (id) => set((state) => {
+        const device = state.devices[id];
+        if (!device) return state;
+        const isNowOn = !(device.powerOn ?? true);
+        
+        // If turning off, we should technically drop interface links, but setting powerOn=false handles it visually.
+        return { devices: { ...state.devices, [id]: { ...device, powerOn: isNowOn } } };
+      })
+    }),
+    {
+      name: 'network-sim-network-storage',
+    }
+  )
+);

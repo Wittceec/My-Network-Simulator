@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ADDomain, ADOrganizationalUnit, ADUser, ADComputer, ADGroup, GPO } from '../types/ad';
 
 interface ActiveDirectoryState {
@@ -33,7 +34,10 @@ interface ActiveDirectoryState {
   seedDefaultDomain: () => void;
 }
 
-export const useActiveDirectoryStore = create<ActiveDirectoryState>((set) => ({
+export const useActiveDirectoryStore = create<ActiveDirectoryState>()(
+  persist(
+    (set) => ({
+
   domains: {},
   ous: {},
   users: {},
@@ -134,4 +138,10 @@ export const useActiveDirectoryStore = create<ActiveDirectoryState>((set) => ({
       }
     };
   })
-}));
+
+    }),
+    {
+      name: 'network-sim-useactivedirectorystore-storage',
+    }
+  )
+);

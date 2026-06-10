@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type DnsRecordType = 'A' | 'AAAA' | 'CNAME' | 'MX' | 'TXT' | 'SRV' | 'NS' | 'SOA' | 'PTR';
 
@@ -27,7 +28,10 @@ interface DnsState {
   seedDefaultDns: () => void;
 }
 
-export const useDnsStore = create<DnsState>((set, get) => ({
+export const useDnsStore = create<DnsState>()(
+  persist(
+    (set, get) => ({
+
   zones: {},
   
   createZone: (zone) => set((state) => ({ zones: { ...state.zones, [zone.id]: zone } })),
@@ -109,4 +113,10 @@ export const useDnsStore = create<DnsState>((set, get) => ({
       }
     });
   }
-}));
+
+    }),
+    {
+      name: 'network-sim-usednsstore-storage',
+    }
+  )
+);

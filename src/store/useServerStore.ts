@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface HyperVM {
   id: string;
@@ -35,7 +36,10 @@ interface ServerState {
   seedDefaultServers: () => void;
 }
 
-export const useServerStore = create<ServerState>((set, get) => ({
+export const useServerStore = create<ServerState>()(
+  persist(
+    (set, get) => ({
+
   vms: {},
   shares: {},
 
@@ -86,4 +90,10 @@ export const useServerStore = create<ServerState>((set, get) => ({
       }
     });
   }
-}));
+
+    }),
+    {
+      name: 'network-sim-useserverstore-storage',
+    }
+  )
+);

@@ -27,6 +27,9 @@ export interface JobState {
   shiftStartTime: number | null;
   tickets: Record<string, Ticket>;
   completedTicketsCount: number;
+  xp: number;
+  level: number;
+  budget: number;
 
   clockIn: (role: JobRole) => void;
   clockOut: () => void;

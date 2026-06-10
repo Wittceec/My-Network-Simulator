@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ResourceGroup, VNet, VM, NSG, RouteTable, AzureResource, VirtualNetworkGateway, LoadBalancer, StorageAccount, EntraUser, EntraGroup, RoleAssignment, DnsZone, AppServicePlan, AppService, KeyVault, KubernetesCluster, VMScaleSet, RecoveryServicesVault, SqlServer, SqlDatabase, LogAnalyticsWorkspace, AzureFirewall, ApplicationGateway, PublicIpAddress, NetworkInterface, AzureBastion, ManagedIdentity, AdvisorRecommendation, PolicyCompliance } from '../types/azure';
 
 interface AzureState {
@@ -121,7 +122,10 @@ interface AzureState {
   loadAzureState: (state: Partial<AzureState>) => void;
 }
 
-export const useAzureStore = create<AzureState>((set) => ({
+export const useAzureStore = create<AzureState>()(
+  persist(
+    (set) => ({
+
   resourceGroups: {},
   vnets: {},
   vms: {},
@@ -460,4 +464,10 @@ export const useAzureStore = create<AzureState>((set) => ({
     recommendations: newState.recommendations || [],
     compliance: newState.compliance || []
   }))
-}));
+
+    }),
+    {
+      name: 'network-sim-useazurestore-storage',
+    }
+  )
+);

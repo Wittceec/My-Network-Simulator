@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface GpoSetting {
   id: string;
@@ -26,7 +27,10 @@ interface GpoState {
   seedDefaultGpos: () => void;
 }
 
-export const useGpoStore = create<GpoState>((set, get) => ({
+export const useGpoStore = create<GpoState>()(
+  persist(
+    (set, get) => ({
+
   gpos: {},
 
   createGpo: (gpo) => set((state) => ({ gpos: { ...state.gpos, [gpo.id]: gpo } })),
@@ -87,4 +91,10 @@ export const useGpoStore = create<GpoState>((set, get) => ({
       }
     });
   }
-}));
+
+    }),
+    {
+      name: 'network-sim-usegpostore-storage',
+    }
+  )
+);

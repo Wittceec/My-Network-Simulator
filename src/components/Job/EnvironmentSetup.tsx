@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Server, Building, Globe } from 'lucide-react';
+import { X, Server, Building, Globe, Trash2 } from 'lucide-react';
 import { generateWorld } from '../../core/simulators/WorldGenerator';
 import { useJobStore } from '../../store/useJobStore';
 
@@ -23,6 +23,13 @@ export default function EnvironmentSetup({ onClose }: { onClose: () => void }) {
       setComplete(true);
       setTimeout(() => onClose(), 1500);
     }, 1500);
+  };
+
+  const handleHardReset = () => {
+    if (confirm("Are you sure? This will delete all saved data, levels, and XP permanently.")) {
+      localStorage.clear();
+      window.location.reload();
+    }
   };
 
   return (
@@ -96,6 +103,14 @@ export default function EnvironmentSetup({ onClose }: { onClose: () => void }) {
                   <div style={{ fontSize: 11, color: '#666' }}>~500 Users, deep OU structures, 25 Servers, enforced GPOs, strict Quotas.</div>
                 </div>
               </button>
+              <div style={{ marginTop: 16, borderTop: '1px solid #ddd', paddingTop: 16 }}>
+                <button 
+                  onClick={handleHardReset}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 8, width: '100%', background: '#fee2e2', color: '#dc2626', border: '1px solid #f87171', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  <Trash2 size={16} /> Hard Reset Entire Application (Delete Save Data)
+                </button>
+              </div>
             </div>
           )}
         </div>

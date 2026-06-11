@@ -26,10 +26,17 @@ function createTicket(
   role: JobRole,
   severity: TicketSeverity,
   type: string,
-  targetResourceId?: string
+  targetResourceId?: string,
+  category: 'Incident' | 'Request' | 'Change' = 'Incident'
 ): Ticket {
+  let prefix = 'INC';
+  if (category === 'Request') prefix = 'REQ';
+  if (category === 'Change') prefix = 'CHG';
+  
+  const randomNum = Math.floor(Math.random() * 9000) + 1000;
+
   return {
-    id: `ticket-${Math.random().toString(36).substr(2, 9)}`,
+    id: `${prefix}-${randomNum}`,
     title,
     description,
     role,
@@ -37,7 +44,9 @@ function createTicket(
     status: 'Open',
     createdAt: Date.now(),
     type,
-    targetResourceId
+    targetResourceId,
+    category,
+    condition: {}
   };
 }
 
@@ -96,10 +105,12 @@ function generateSysAdminTicket(): Ticket | null {
     const users = Object.values(m365Store.users).filter(u => u.license === 'Unlicensed');
     if (users.length > 0) {
       const u = users[0];
-      return createTicket(`Assign E5 License`, `${u.displayName} needs an E5 license assigned.`, 'SysAdmin', 'Medium', 'm365_assign_license', u.id);
+      return createTicket(`Assign E5 License`, `${u.displayName} needs an E5 license assigned.`, 'SysAdmin', 'Medium', 'm365_assign_license', u.id, 'Request');
     }
+  } else if (rand < 0.97) {
+    return createTicket('Create Shared Mailbox', 'Create a shared mailbox called "IT Support" with email "it@corp.local".', 'SysAdmin', 'Medium', 'm365_create_shared_mailbox', undefined, 'Request');
   } else {
-    return createTicket('Create Shared Mailbox', 'Create a shared mailbox called "IT Support" with email "it@corp.local".', 'SysAdmin', 'Medium', 'm365_create_shared_mailbox');
+    return createTicket('Project: New Department AD Group', 'A new "Design Team" department is forming. Please create a new Active Directory Security Group called "Design Team".', 'SysAdmin', 'Low', 'sys_create_ad_group', undefined, 'Change');
   }
   return null;
 }
@@ -110,13 +121,15 @@ function generateNetAdminTicket(): Ticket | null {
   const downLinks = links.filter(l => l.status === 'down');
   const rand = Math.random();
   
-  if (downLinks.length > 0 && rand < 0.5) {
+  if (downLinks.length > 0 && rand < 0.4) {
     const targetLink = downLinks[Math.floor(Math.random() * downLinks.length)];
     return createTicket(`Link Down`, `Network monitoring shows a link is administratively down. Bring it up.`, 'NetAdmin', 'Critical', 'net_link_down', targetLink.id);
-  } else if (rand < 0.75) {
+  } else if (rand < 0.6) {
     return createTicket(`OSPF neighbor down`, `Investigate OSPF neighbor relationship on Core-RTR-1.`, 'NetAdmin', 'High', 'net_ospf_down');
+  } else if (rand < 0.8) {
+    return createTicket('Create Hyper-V Virtual Switch', 'We need a new Private virtual switch named "vSwitch-Private" in Hyper-V.', 'NetAdmin', 'Medium', 'hyperv_create_vswitch', undefined, 'Request');
   } else {
-    return createTicket('Create Hyper-V Virtual Switch', 'We need a new Private virtual switch named "vSwitch-Private" in Hyper-V.', 'NetAdmin', 'Medium', 'hyperv_create_vswitch');
+    return createTicket('Project: New Branch Router Provisioning', 'We are opening a new branch. Provision a new Router called "Branch-RTR-2" in the topology. It just needs to be added, no config required yet.', 'NetAdmin', 'Low', 'net_provision_router', undefined, 'Change');
   }
 }
 
@@ -133,16 +146,18 @@ function generateCloudArchitectTicket(): Ticket | null {
     return createTicket('Fix Routing to On-Prem', 'Traffic to 10.0.0.0/8 is dropping. Update "rt-core-prod" Next Hop to VirtualNetworkGateway.', 'CloudArchitect', 'High', 'azure_fix_route');
   } else if (rand < 0.45 && rbs.length > 0) {
     const ra = rbs[0];
-    return createTicket(`Revoke Contributor Access`, `Security audit requires removing Contributor access for ${ra.principalId}. Delete the role assignment.`, 'CloudArchitect', 'Medium', 'azure_remove_rbac', ra.id);
+    return createTicket(`Revoke Contributor Access`, `Security audit requires removing Contributor access for ${ra.principalId}. Delete the role assignment.`, 'CloudArchitect', 'Medium', 'azure_remove_rbac', ra.id, 'Request');
   } else if (rand < 0.6) {
-    return createTicket('Deploy new Application Gateway', 'Provision an Azure Application Gateway with WAF_v2 SKU.', 'CloudArchitect', 'Medium', 'azure_deploy_appgw');
-  } else if (rand < 0.75) {
+    return createTicket('Deploy new Application Gateway', 'Provision an Azure Application Gateway with WAF_v2 SKU.', 'CloudArchitect', 'Medium', 'azure_deploy_appgw', undefined, 'Request');
+  } else if (rand < 0.7) {
     return createTicket('Identity Sync Alert', 'Local users not syncing. Create a cloud-only user in Entra ID to test.', 'CloudArchitect', 'Low', 'azure_create_entra_user');
-  } else if (rand < 0.9 && pips.length > 0) {
+  } else if (rand < 0.8 && pips.length > 0) {
     const targetPip = pips[Math.floor(Math.random() * pips.length)];
-    return createTicket(`Cost Optimization: Delete PIP ${targetPip.name}`, `Delete unused Public IP ${targetPip.name}.`, 'CloudArchitect', 'Low', 'azure_delete_pip', targetPip.id);
+    return createTicket(`Cost Optimization: Delete PIP ${targetPip.name}`, `Delete unused Public IP ${targetPip.name}.`, 'CloudArchitect', 'Low', 'azure_delete_pip', targetPip.id, 'Request');
+  } else if (rand < 0.9) {
+    return createTicket('Provision new VNet', 'Create a Virtual Network in East US called "vnet-eastus-02".', 'CloudArchitect', 'Medium', 'azure_create_vnet', undefined, 'Request');
   } else {
-    return createTicket('Provision new VNet', 'Create a Virtual Network in East US called "vnet-eastus-02".', 'CloudArchitect', 'Medium', 'azure_create_vnet');
+    return createTicket('Project: Deploy DB Server', 'The data team needs a new Linux VM deployed in Azure named "vm-db-prod-01".', 'CloudArchitect', 'Medium', 'azure_deploy_vm', undefined, 'Change');
   }
 }
 
@@ -563,6 +578,29 @@ export function verifyTickets() {
         jobStore.verifyTicketResolution(ticket.id, () => {
           const mailboxes = Object.values(useM365Store.getState().sharedMailboxes);
           return mailboxes.some(mb => mb.emailAddress.toLowerCase() === 'it@corp.local');
+        });
+        break;
+
+      // PROJECTS / CHANGES
+      case 'sys_create_ad_group':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          const adStore = useActiveDirectoryStore.getState();
+          const groups = Object.values(adStore.groups);
+          return groups.some(g => g.name.toLowerCase() === 'design team');
+        });
+        break;
+      case 'net_provision_router':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          const netStore = useNetworkStore.getState();
+          const devices = Object.values(netStore.devices);
+          return devices.some(d => d.type === 'router' && d.hostname.toLowerCase() === 'branch-rtr-2');
+        });
+        break;
+      case 'azure_deploy_vm':
+        jobStore.verifyTicketResolution(ticket.id, () => {
+          const azureStore = useAzureStore.getState();
+          const vms = Object.values(azureStore.vms);
+          return vms.some(vm => vm.name.toLowerCase() === 'vm-db-prod-01' && vm.os === 'Linux');
         });
         break;
     }

@@ -12,6 +12,7 @@ export interface Ticket {
   status: TicketStatus;
   createdAt: number;
   resolvedAt?: number;
+  category?: 'Incident' | 'Request' | 'Change';
   condition: any;
   assignedTo?: string; // e.g. 'You'
   notes?: { author: string, timestamp: number, content: string }[];

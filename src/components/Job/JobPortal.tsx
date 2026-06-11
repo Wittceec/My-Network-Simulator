@@ -170,6 +170,9 @@ function TicketCard({ ticket }: { ticket: Ticket }) {
 
   const handleStart = () => store.updateTicketStatus(ticket.id, 'InProgress');
   
+  const category = ticket.category || 'Incident';
+  const categoryColor = category === 'Change' ? '#a855f7' : category === 'Request' ? '#3b82f6' : '#ef4444';
+
   return (
     <div style={{ 
       background: '#252526', 
@@ -178,7 +181,10 @@ function TicketCard({ ticket }: { ticket: Ticket }) {
       borderRadius: '0 6px 6px 0' 
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-        <h4 style={{ margin: 0, fontSize: 16 }}>{ticket.title}</h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, background: categoryColor, padding: '2px 6px', borderRadius: 4, fontWeight: 'bold' }}>{category.toUpperCase()}</span>
+          <h4 style={{ margin: 0, fontSize: 16 }}>{ticket.title}</h4>
+        </div>
         <span style={{ fontSize: 11, background: '#3c3c3c', padding: '2px 6px', borderRadius: 10 }}>{ticket.id}</span>
       </div>
       <div style={{ fontSize: 13, color: '#ccc', marginBottom: 16 }}>

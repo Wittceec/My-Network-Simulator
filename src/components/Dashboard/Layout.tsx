@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import { useJobStore } from '../../store/useJobStore';
-import { Hexagon, Home, Briefcase, HeadphonesIcon, Server, Globe, FileText, Monitor, Folder, Cloud, Network, ShieldAlert } from 'lucide-react';
+import { Hexagon, Home, Briefcase, HeadphonesIcon, Server, Globe, FileText, Monitor, Folder, Cloud, Network, ShieldAlert, HelpCircle } from 'lucide-react';
+import HelpGuide from './../UI/HelpGuide';
 import './Dashboard.css';
 
 interface LayoutProps {
@@ -11,6 +12,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, currentView, onNavigate }: LayoutProps) {
+  const [showHelp, setShowHelp] = React.useState(false);
   const deviceCount = useNetworkStore((s) => Object.keys(s.devices).length);
   const jobStore = useJobStore();
   const openTicketsCount = Object.values(jobStore.tickets).filter(t => t.status === 'Open').length;
@@ -69,7 +71,11 @@ export default function Layout({ children, currentView, onNavigate }: LayoutProp
             <h2>{navItems.find(n => n.id === currentView)?.label || 'Dashboard'}</h2>
             <span className="header-subtitle">my_network_lab • {deviceCount} Devices</span>
           </div>
-          <div className="header-actions">
+          <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <button className="btn btn-ghost" onClick={() => setShowHelp(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <HelpCircle size={18} />
+              <span style={{ fontSize: 13 }}>Help & Tips</span>
+            </button>
             {jobStore.isClockedIn && (
               <div className="clocked-in-badge">
                 <div className="pulse-dot"></div>
@@ -84,6 +90,8 @@ export default function Layout({ children, currentView, onNavigate }: LayoutProp
           {children}
         </div>
       </main>
+
+      {showHelp && <HelpGuide onClose={() => setShowHelp(false)} />}
     </div>
   );
 }

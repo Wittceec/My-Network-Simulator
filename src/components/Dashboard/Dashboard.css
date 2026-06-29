@@ -328,3 +328,57 @@
   transition: color 0.2s;
 }
 .launch-btn:hover span { color: var(--text); }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column-reverse;
+  }
+
+  .global-nav {
+    width: 100vw;
+    height: 64px;
+    flex-direction: row;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    background: rgba(24, 24, 27, 0.95);
+  }
+
+  .nav-brand, .nav-footer {
+    display: none;
+  }
+
+  .nav-links {
+    flex-direction: row;
+    padding: 0 16px;
+    gap: 8px;
+    align-items: center;
+    width: max-content;
+  }
+
+  .nav-item {
+    width: 48px;
+    height: 48px;
+  }
+
+  .nav-item span {
+    display: none !important; /* Hide labels on mobile bottom bar */
+  }
+
+  .main-header {
+    padding: 0 16px;
+    height: 56px;
+  }
+
+  .dash-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dashboard-home {
+    padding: 16px;
+  }
+}

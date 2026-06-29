@@ -230,7 +230,7 @@ export default function SubnetPractice() {
           </div>
 
           {mode === 'IPv4' && v4Challenge && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div className="subnet-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               {[
                 { key: 'network', label: 'Network Address' },
                 { key: 'broadcast', label: 'Broadcast Address' },

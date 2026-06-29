@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import { useJobStore } from '../../store/useJobStore';
-import { Hexagon, Home, Briefcase, HeadphonesIcon, Server, Globe, FileText, Monitor, Folder, Cloud, Network, ShieldAlert, HelpCircle } from 'lucide-react';
+import { Hexagon, Home, Briefcase, HeadphonesIcon, Server, Globe, FileText, Monitor, Folder, Cloud, Network, ShieldAlert, HelpCircle, Calculator } from 'lucide-react';
 import HelpGuide from './../UI/HelpGuide';
 import './Dashboard.css';
 
@@ -29,6 +29,7 @@ export default function Layout({ children, currentView, onNavigate }: LayoutProp
     { id: 'azure', icon: <Cloud size={20} />, label: 'Azure Portal' },
     { id: 'm365', icon: <Cloud size={20} />, label: 'Microsoft 365' },
     { id: 'soc', icon: <ShieldAlert size={20} />, label: 'SOC / SIEM' },
+    { id: 'subnet', icon: <Calculator size={20} />, label: 'Subnet Practice' },
     { id: 'network', icon: <Network size={20} />, label: 'Network Map' },
   ];
 

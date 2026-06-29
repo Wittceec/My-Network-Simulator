@@ -714,3 +714,11 @@ body {
   overflow-y: auto;
   line-height: 1.5;
 }
+.azure-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+}

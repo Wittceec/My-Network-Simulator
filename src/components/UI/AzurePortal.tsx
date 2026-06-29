@@ -781,10 +781,10 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                     <input type="text" placeholder="Search" />
                   </div>
                   <div className="nav-group">
-                    <button className="nav-item active"><div className="icon-wrapper"><Folder size={16} /></div> All resources</button>
-                    <button className="nav-item"><div className="icon-wrapper"><Folder size={16} /></div> Favorite resources</button>
-                    <button className="nav-item"><div className="icon-wrapper"><Activity size={16} /></div> Recent resources</button>
-                    <button className="nav-item" onClick={() => setActiveTab('resourceGroups')}><div className="icon-wrapper"><Folder size={16} /></div> Resource groups</button>
+                    <button className="nav-item active"><div className="azure-nav-icon"><Folder size={16} /></div> All resources</button>
+                    <button className="nav-item"><div className="azure-nav-icon"><Folder size={16} /></div> Favorite resources</button>
+                    <button className="nav-item"><div className="azure-nav-icon"><Activity size={16} /></div> Recent resources</button>
+                    <button className="nav-item" onClick={() => setActiveTab('resourceGroups')}><div className="azure-nav-icon"><Folder size={16} /></div> Resource groups</button>
                   </div>
                 </>
               )}
@@ -796,15 +796,15 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                     <input type="text" placeholder="Search" />
                   </div>
                   <div className="nav-group">
-                    <button className="nav-item active"><div className="icon-wrapper"><Activity size={16} /></div> Overview</button>
-                    <button className="nav-item"><div className="icon-wrapper"><Shield size={16} /></div> Access control (IAM)</button>
+                    <button className="nav-item active"><div className="azure-nav-icon"><Activity size={16} /></div> Overview</button>
+                    <button className="nav-item"><div className="azure-nav-icon"><Shield size={16} /></div> Access control (IAM)</button>
                     <div className="nav-group-title">Cost management</div>
-                    <button className="nav-item"><div className="icon-wrapper"><Activity size={16} /></div> Cost analysis</button>
-                    <button className="nav-item"><div className="icon-wrapper"><Bell size={16} /></div> Cost alerts</button>
-                    <button className="nav-item"><div className="icon-wrapper"><Settings size={16} /></div> Budgets</button>
+                    <button className="nav-item"><div className="azure-nav-icon"><Activity size={16} /></div> Cost analysis</button>
+                    <button className="nav-item"><div className="azure-nav-icon"><Bell size={16} /></div> Cost alerts</button>
+                    <button className="nav-item"><div className="azure-nav-icon"><Settings size={16} /></div> Budgets</button>
                     <div className="nav-group-title">Billing</div>
-                    <button className="nav-item"><div className="icon-wrapper"><Folder size={16} /></div> Invoices</button>
-                    <button className="nav-item"><div className="icon-wrapper"><Settings size={16} /></div> Payment methods</button>
+                    <button className="nav-item"><div className="azure-nav-icon"><Folder size={16} /></div> Invoices</button>
+                    <button className="nav-item"><div className="azure-nav-icon"><Settings size={16} /></div> Payment methods</button>
                   </div>
                 </>
               )}
@@ -812,37 +812,37 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                 <>
                   <div className="sidebar-header">Resource Manager</div>
                   <div className="nav-group">
-                    <button className="nav-item" onClick={() => setActiveTab('allResources')}><div className="icon-wrapper"><Folder size={16} /></div> All resources</button>
+                    <button className="nav-item" onClick={() => setActiveTab('allResources')}><div className="azure-nav-icon"><Folder size={16} /></div> All resources</button>
                     <div className="nav-group-title">Help + Support</div>
-                    <button className={`nav-item ${activeTab === 'advisor' ? 'active' : ''}`} onClick={() => { refreshAdvisor(); setActiveTab('advisor'); }}><div className="icon-wrapper"><Activity size={16} /></div> Advisor</button>
-                    <button className={`nav-item ${activeTab === 'policy' ? 'active' : ''}`} onClick={() => { refreshCompliance(); setActiveTab('policy'); }}><div className="icon-wrapper"><Shield size={16} /></div> Policy</button>
-                    <button className={`nav-item ${activeTab === 'networkWatcher' ? 'active' : ''}`} onClick={() => setActiveTab('networkWatcher')}><div className="icon-wrapper"><Monitor size={16} /></div> Network Watcher</button>
+                    <button className={`nav-item ${activeTab === 'advisor' ? 'active' : ''}`} onClick={() => { refreshAdvisor(); setActiveTab('advisor'); }}><div className="azure-nav-icon"><Activity size={16} /></div> Advisor</button>
+                    <button className={`nav-item ${activeTab === 'policy' ? 'active' : ''}`} onClick={() => { refreshCompliance(); setActiveTab('policy'); }}><div className="azure-nav-icon"><Shield size={16} /></div> Policy</button>
+                    <button className={`nav-item ${activeTab === 'networkWatcher' ? 'active' : ''}`} onClick={() => setActiveTab('networkWatcher')}><div className="azure-nav-icon"><Monitor size={16} /></div> Network Watcher</button>
                     <div className="nav-group-title">Resources</div>
-                    <button className={`nav-item ${activeTab === 'resourceGroups' ? 'active' : ''}`} onClick={() => setActiveTab('resourceGroups')}><div className="icon-wrapper"><Folder size={16} /></div> Resource groups</button>
-                    <button className={`nav-item ${activeTab === 'vms' ? 'active' : ''}`} onClick={() => setActiveTab('vms')}><div className="icon-wrapper"><Server size={16} /></div> Virtual machines</button>
-                    <button className={`nav-item ${activeTab === 'vnets' ? 'active' : ''}`} onClick={() => setActiveTab('vnets')}><div className="icon-wrapper"><Network size={16} /></div> Virtual networks</button>
-                    <button className={`nav-item ${activeTab === 'vngs' ? 'active' : ''}`} onClick={() => setActiveTab('vngs')}><div className="icon-wrapper"><Network size={16} /></div> Virtual network gateways</button>
-                    <button className={`nav-item ${activeTab === 'nsgs' ? 'active' : ''}`} onClick={() => setActiveTab('nsgs')}><div className="icon-wrapper"><Shield size={16} /></div> Network security groups</button>
-                    <button className={`nav-item ${activeTab === 'storageAccounts' ? 'active' : ''}`} onClick={() => setActiveTab('storageAccounts')}><div className="icon-wrapper"><Database size={16} /></div> Storage accounts</button>
-                    <button className={`nav-item ${activeTab === 'appServices' ? 'active' : ''}`} onClick={() => setActiveTab('appServices')}><div className="icon-wrapper"><AppWindow size={16} /></div> App Services</button>
-                    <button className={`nav-item ${activeTab === 'dnsZones' ? 'active' : ''}`} onClick={() => setActiveTab('dnsZones')}><div className="icon-wrapper"><Globe size={16} /></div> DNS zones</button>
-                    <button className={`nav-item ${activeTab === 'keyVaults' ? 'active' : ''}`} onClick={() => setActiveTab('keyVaults')}><div className="icon-wrapper"><Key size={16} /></div> Key vaults</button>
-                    <button className={`nav-item ${activeTab === 'aksClusters' ? 'active' : ''}`} onClick={() => setActiveTab('aksClusters')}><div className="icon-wrapper"><Box size={16} /></div> Kubernetes services</button>
-                    <button className={`nav-item ${activeTab === 'vmss' ? 'active' : ''}`} onClick={() => setActiveTab('vmss')}><div className="icon-wrapper"><Layers size={16} /></div> Virtual machine scale sets</button>
-                    <button className={`nav-item ${activeTab === 'recoveryVaults' ? 'active' : ''}`} onClick={() => setActiveTab('recoveryVaults')}><div className="icon-wrapper"><Archive size={16} /></div> Recovery Services vaults</button>
-                    <button className={`nav-item ${activeTab === 'sqlServers' ? 'active' : ''}`} onClick={() => setActiveTab('sqlServers')}><div className="icon-wrapper"><Server size={16} /></div> SQL servers</button>
-                    <button className={`nav-item ${activeTab === 'sqlDatabases' ? 'active' : ''}`} onClick={() => setActiveTab('sqlDatabases')}><div className="icon-wrapper"><Database size={16} /></div> SQL databases</button>
-                    <button className={`nav-item ${activeTab === 'logWorkspaces' ? 'active' : ''}`} onClick={() => setActiveTab('logWorkspaces')}><div className="icon-wrapper"><Monitor size={16} /></div> Log Analytics workspaces</button>
-                    <button className={`nav-item ${activeTab === 'routeTables' ? 'active' : ''}`} onClick={() => setActiveTab('routeTables')}><div className="icon-wrapper"><Map size={16} /></div> Route tables</button>
-                    <button className={`nav-item ${activeTab === 'firewalls' ? 'active' : ''}`} onClick={() => setActiveTab('firewalls')}><div className="icon-wrapper"><Flame size={16} /></div> Firewalls</button>
-                    <button className={`nav-item ${activeTab === 'appGateways' ? 'active' : ''}`} onClick={() => setActiveTab('appGateways')}><div className="icon-wrapper"><Split size={16} /></div> Application gateways</button>
-                    <button className={`nav-item ${activeTab === 'loadBalancers' ? 'active' : ''}`} onClick={() => setActiveTab('loadBalancers')}><div className="icon-wrapper"><Scale size={16} /></div> Load balancers</button>
-                    <button className={`nav-item ${activeTab === 'peerings' ? 'active' : ''}`} onClick={() => setActiveTab('peerings')}><div className="icon-wrapper"><ArrowRightLeft size={16} /></div> Peerings</button>
-                    <button className={`nav-item ${activeTab === 'publicIps' ? 'active' : ''}`} onClick={() => setActiveTab('publicIps')}><div className="icon-wrapper"><Globe size={16} /></div> Public IP addresses</button>
-                    <button className={`nav-item ${activeTab === 'nics' ? 'active' : ''}`} onClick={() => setActiveTab('nics')}><div className="icon-wrapper"><Plug size={16} /></div> Network interfaces</button>
-                    <button className={`nav-item ${activeTab === 'bastions' ? 'active' : ''}`} onClick={() => setActiveTab('bastions')}><div className="icon-wrapper"><ShieldCheck size={16} /></div> Bastions</button>
-                    <button className={`nav-item ${activeTab === 'appServicePlans' ? 'active' : ''}`} onClick={() => setActiveTab('appServicePlans')}><div className="icon-wrapper"><Layers size={16} /></div> App Service plans</button>
-                    <button className={`nav-item ${activeTab === 'managedIdentities' ? 'active' : ''}`} onClick={() => setActiveTab('managedIdentities')}><div className="icon-wrapper"><Fingerprint size={16} /></div> Managed Identities</button>
+                    <button className={`nav-item ${activeTab === 'resourceGroups' ? 'active' : ''}`} onClick={() => setActiveTab('resourceGroups')}><div className="azure-nav-icon"><Folder size={16} /></div> Resource groups</button>
+                    <button className={`nav-item ${activeTab === 'vms' ? 'active' : ''}`} onClick={() => setActiveTab('vms')}><div className="azure-nav-icon"><Server size={16} /></div> Virtual machines</button>
+                    <button className={`nav-item ${activeTab === 'vnets' ? 'active' : ''}`} onClick={() => setActiveTab('vnets')}><div className="azure-nav-icon"><Network size={16} /></div> Virtual networks</button>
+                    <button className={`nav-item ${activeTab === 'vngs' ? 'active' : ''}`} onClick={() => setActiveTab('vngs')}><div className="azure-nav-icon"><Network size={16} /></div> Virtual network gateways</button>
+                    <button className={`nav-item ${activeTab === 'nsgs' ? 'active' : ''}`} onClick={() => setActiveTab('nsgs')}><div className="azure-nav-icon"><Shield size={16} /></div> Network security groups</button>
+                    <button className={`nav-item ${activeTab === 'storageAccounts' ? 'active' : ''}`} onClick={() => setActiveTab('storageAccounts')}><div className="azure-nav-icon"><Database size={16} /></div> Storage accounts</button>
+                    <button className={`nav-item ${activeTab === 'appServices' ? 'active' : ''}`} onClick={() => setActiveTab('appServices')}><div className="azure-nav-icon"><AppWindow size={16} /></div> App Services</button>
+                    <button className={`nav-item ${activeTab === 'dnsZones' ? 'active' : ''}`} onClick={() => setActiveTab('dnsZones')}><div className="azure-nav-icon"><Globe size={16} /></div> DNS zones</button>
+                    <button className={`nav-item ${activeTab === 'keyVaults' ? 'active' : ''}`} onClick={() => setActiveTab('keyVaults')}><div className="azure-nav-icon"><Key size={16} /></div> Key vaults</button>
+                    <button className={`nav-item ${activeTab === 'aksClusters' ? 'active' : ''}`} onClick={() => setActiveTab('aksClusters')}><div className="azure-nav-icon"><Box size={16} /></div> Kubernetes services</button>
+                    <button className={`nav-item ${activeTab === 'vmss' ? 'active' : ''}`} onClick={() => setActiveTab('vmss')}><div className="azure-nav-icon"><Layers size={16} /></div> Virtual machine scale sets</button>
+                    <button className={`nav-item ${activeTab === 'recoveryVaults' ? 'active' : ''}`} onClick={() => setActiveTab('recoveryVaults')}><div className="azure-nav-icon"><Archive size={16} /></div> Recovery Services vaults</button>
+                    <button className={`nav-item ${activeTab === 'sqlServers' ? 'active' : ''}`} onClick={() => setActiveTab('sqlServers')}><div className="azure-nav-icon"><Server size={16} /></div> SQL servers</button>
+                    <button className={`nav-item ${activeTab === 'sqlDatabases' ? 'active' : ''}`} onClick={() => setActiveTab('sqlDatabases')}><div className="azure-nav-icon"><Database size={16} /></div> SQL databases</button>
+                    <button className={`nav-item ${activeTab === 'logWorkspaces' ? 'active' : ''}`} onClick={() => setActiveTab('logWorkspaces')}><div className="azure-nav-icon"><Monitor size={16} /></div> Log Analytics workspaces</button>
+                    <button className={`nav-item ${activeTab === 'routeTables' ? 'active' : ''}`} onClick={() => setActiveTab('routeTables')}><div className="azure-nav-icon"><Map size={16} /></div> Route tables</button>
+                    <button className={`nav-item ${activeTab === 'firewalls' ? 'active' : ''}`} onClick={() => setActiveTab('firewalls')}><div className="azure-nav-icon"><Flame size={16} /></div> Firewalls</button>
+                    <button className={`nav-item ${activeTab === 'appGateways' ? 'active' : ''}`} onClick={() => setActiveTab('appGateways')}><div className="azure-nav-icon"><Split size={16} /></div> Application gateways</button>
+                    <button className={`nav-item ${activeTab === 'loadBalancers' ? 'active' : ''}`} onClick={() => setActiveTab('loadBalancers')}><div className="azure-nav-icon"><Scale size={16} /></div> Load balancers</button>
+                    <button className={`nav-item ${activeTab === 'peerings' ? 'active' : ''}`} onClick={() => setActiveTab('peerings')}><div className="azure-nav-icon"><ArrowRightLeft size={16} /></div> Peerings</button>
+                    <button className={`nav-item ${activeTab === 'publicIps' ? 'active' : ''}`} onClick={() => setActiveTab('publicIps')}><div className="azure-nav-icon"><Globe size={16} /></div> Public IP addresses</button>
+                    <button className={`nav-item ${activeTab === 'nics' ? 'active' : ''}`} onClick={() => setActiveTab('nics')}><div className="azure-nav-icon"><Plug size={16} /></div> Network interfaces</button>
+                    <button className={`nav-item ${activeTab === 'bastions' ? 'active' : ''}`} onClick={() => setActiveTab('bastions')}><div className="azure-nav-icon"><ShieldCheck size={16} /></div> Bastions</button>
+                    <button className={`nav-item ${activeTab === 'appServicePlans' ? 'active' : ''}`} onClick={() => setActiveTab('appServicePlans')}><div className="azure-nav-icon"><Layers size={16} /></div> App Service plans</button>
+                    <button className={`nav-item ${activeTab === 'managedIdentities' ? 'active' : ''}`} onClick={() => setActiveTab('managedIdentities')}><div className="azure-nav-icon"><Fingerprint size={16} /></div> Managed Identities</button>
                   </div>
                 </>
               )}
@@ -850,9 +850,9 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                 <>
                   <div className="sidebar-header">Microsoft Entra ID</div>
                   <div className="nav-group">
-                    <button className="nav-item active"><div className="icon-wrapper"><Users size={16} /></div> Overview</button>
-                    <button className="nav-item" onClick={() => setActiveTab('entraId')}><div className="icon-wrapper"><Users size={16} /></div> Users</button>
-                    <button className="nav-item" onClick={() => setActiveTab('entraGroups')}><div className="icon-wrapper"><UsersRound size={16} /></div> Groups</button>
+                    <button className="nav-item active"><div className="azure-nav-icon"><Users size={16} /></div> Overview</button>
+                    <button className="nav-item" onClick={() => setActiveTab('entraId')}><div className="azure-nav-icon"><Users size={16} /></div> Users</button>
+                    <button className="nav-item" onClick={() => setActiveTab('entraGroups')}><div className="azure-nav-icon"><UsersRound size={16} /></div> Groups</button>
                   </div>
                 </>
               )}
@@ -860,8 +860,8 @@ export default function AzurePortal({ onClose }: AzurePortalProps) {
                 <>
                   <div className="sidebar-header">Microsoft Entra ID | Groups</div>
                   <div className="nav-group">
-                    <button className="nav-item" onClick={() => setActiveTab('entraId')}><div className="icon-wrapper"><Users size={16} /></div> All users</button>
-                    <button className="nav-item active"><div className="icon-wrapper"><UsersRound size={16} /></div> All groups</button>
+                    <button className="nav-item" onClick={() => setActiveTab('entraId')}><div className="azure-nav-icon"><Users size={16} /></div> All users</button>
+                    <button className="nav-item active"><div className="azure-nav-icon"><UsersRound size={16} /></div> All groups</button>
                   </div>
                 </>
               )}
